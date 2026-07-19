@@ -69,6 +69,13 @@ body{
 }
 .plate-brand .model{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);letter-spacing:1px;margin-top:2px;}
 .plate-lights{display:flex;gap:14px;align-items:center;}
+.back-link{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--text-muted);text-decoration:none;border:1px solid var(--metal);border-radius:4px;
+  padding:6px 10px;
+}
+.back-link:hover{color:var(--vfd-amber);border-color:var(--vfd-amber-dim);}
+.back-link:focus-visible{outline:2px solid var(--vfd-amber);outline-offset:2px;}
 .light{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;color:var(--text-faint);text-transform:uppercase;}
 .led{width:8px;height:8px;border-radius:50%;background:#2a2620;box-shadow:inset 0 0 2px #000;}
 .led.on-green{background:var(--led-green);box-shadow:0 0 8px var(--led-green);}
@@ -226,6 +233,7 @@ body{
       </div>
     </div>
     <div class="plate-lights">
+      <a href="https://thatonedudeaust.github.io/maphub" class="back-link">&larr; Back to MapHub</a>
       <div class="light"><span class="led on-green" id="led-power"></span>Power</div>
       <div class="light"><span class="led" id="led-alert"></span>Alert</div>
     </div>
