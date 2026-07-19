@@ -1,674 +1,358 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>MapHub Weather</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<link 
-rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
 <style>
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-
-
 * {
-    box-sizing:border-box;
+    box-sizing: border-box;
+    font-family: Inter, Arial, sans-serif;
 }
-
 
 body {
-
-    margin:0;
-    font-family:Inter,Arial,sans-serif;
-    overflow:hidden;
-    background:#07111f;
-
+    margin: 0;
+    background: #0b1220;
+    color: white;
 }
 
-
-#map {
-
-    height:100vh;
-    width:100%;
-
+header {
+    padding: 20px;
+    background: linear-gradient(135deg,#1e3a8a,#2563eb);
 }
 
-
-
-.card {
-
-    position:absolute;
-    z-index:999;
-
-    background:rgba(15,23,42,.85);
-
-    backdrop-filter:blur(18px);
-
-    color:white;
-
-    border-radius:22px;
-
-    box-shadow:
-    0 15px 40px rgba(0,0,0,.4);
-
+header h1 {
+    margin: 0;
+    font-size: 32px;
 }
-
-
-
-.header {
-
-    top:20px;
-    left:20px;
-
-    padding:18px 22px;
-
-}
-
-
-
-.logo {
-
-    font-size:25px;
-    font-weight:800;
-
-}
-
-
-
-.small {
-
-    color:#94a3b8;
-    font-size:13px;
-
-}
-
-
 
 .search {
-
-    margin-top:15px;
-
-    display:flex;
-    gap:8px;
-
+    margin-top: 15px;
 }
-
-
 
 input {
-
-    width:150px;
-
-    padding:10px;
-
-    border-radius:12px;
-
-    border:none;
-
-    background:#1e293b;
-
-    color:white;
-
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    width: 220px;
+    font-size: 16px;
 }
-
-
 
 button {
-
+    padding: 12px 18px;
+    border-radius: 10px;
     border:none;
-
-    background:#2563eb;
-
-    color:white;
-
-    border-radius:12px;
-
-    padding:10px 15px;
-
+    background:#38bdf8;
     cursor:pointer;
-
-    font-weight:600;
-
+    font-weight:bold;
 }
 
-
-
-button:hover {
-
-    background:#1d4ed8;
-
-}
-
-
-
-
-.weather {
-
-    top:20px;
-
-    right:20px;
-
+.container {
     padding:20px;
-
-    width:240px;
-
-    text-align:center;
-
+    display:grid;
+    gap:20px;
 }
 
-
-
-.location {
-
-    font-size:16px;
-
-    color:#cbd5e1;
-
+.card {
+    background:#111827;
+    border-radius:18px;
+    padding:20px;
+    box-shadow:0 10px 30px #0005;
 }
-
-
-
-.temp {
-
-    font-size:60px;
-
-    font-weight:800;
-
-}
-
-
-
-.condition {
-
-    font-size:18px;
-
-}
-
-
 
 .stats {
-
-    margin-top:15px;
-
-    color:#cbd5e1;
-
-    font-size:14px;
-
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:15px;
 }
 
-
-
-
-.alertPanel {
-
-    right:20px;
-
-    bottom:90px;
-
-    width:320px;
-
-    max-height:400px;
-
-    overflow:auto;
-
+.stat {
+    background:#1f2937;
     padding:15px;
-
-    display:none;
-
+    border-radius:15px;
 }
 
+.stat h3 {
+    margin:0;
+    font-size:14px;
+    color:#94a3b8;
+}
 
+.stat p {
+    font-size:25px;
+    margin:8px 0 0;
+}
+
+#map {
+    height:500px;
+    border-radius:15px;
+}
 
 .alert {
-
-    background:#1e293b;
-
-    padding:14px;
-
-    border-radius:15px;
-
-    margin-bottom:10px;
-
-}
-
-
-
-.red {
+    background:#7f1d1d;
     border-left:5px solid #ef4444;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:10px;
 }
 
-.orange {
-    border-left:5px solid #f97316;
+.small {
+    color:#94a3b8;
 }
-
-.yellow {
-    border-left:5px solid #eab308;
-}
-
-.blue {
-    border-left:5px solid #3b82f6;
-}
-
-
-
-
-
-.layers {
-
-    bottom:20px;
-
-    left:50%;
-
-    transform:translateX(-50%);
-
-    padding:12px;
-
-    display:flex;
-
-    gap:10px;
-
-}
-
-
-
-.layerBtn {
-
-    background:#1e293b;
-
-    padding:12px 18px;
-
-    border-radius:14px;
-
-    cursor:pointer;
-
-}
-
-
-
-.layerBtn:hover {
-
-    background:#334155;
-
-}
-
-
-
 </style>
 
 </head>
 
-
 <body>
 
-
-<div id="map"></div>
-
-
-
-<div class="card header">
-
-
-<div class="logo">
-🌦 MapHub Weather
-</div>
-
-
-<div class="small">
-National Weather Service Data
-</div>
-
-
+<header>
+<h1>🌎 MapHub Weather</h1>
 
 <div class="search">
-
-<input 
-id="zip"
-placeholder="ZIP Code">
-
-
-<button onclick="searchZip()">
-Search
-</button>
-
-
+<input id="zip" placeholder="Enter ZIP Code">
+<button onclick="loadWeather()">Search</button>
 </div>
+</header>
 
 
-</div>
+<div class="container">
 
+<div class="card">
 
-
-
-<div class="card weather">
-
-
-<div class="location" id="location">
-Select location
-</div>
-
-
-<div class="temp">
---°
-</div>
-
-
-<div class="condition">
-Weather Map
-</div>
-
+<h2 id="location">Enter a ZIP code</h2>
+<p class="small" id="updated"></p>
 
 <div class="stats">
 
-💨 Wind -- mph<br>
-
-💧 Humidity --%
-
+<div class="stat">
+<h3>Temperature</h3>
+<p id="temp">--</p>
 </div>
 
-
+<div class="stat">
+<h3>Humidity</h3>
+<p id="humidity">--</p>
 </div>
 
-
-
-
-
-<div class="card alertPanel" id="alerts">
-
-
-<h3>
-⚠ Active Alerts
-</h3>
-
-
-<div id="alertList">
-
+<div class="stat">
+<h3>Wind</h3>
+<p id="wind">--</p>
 </div>
 
+</div>
 
 </div>
 
 
 
+<div class="card">
 
+<h2>⚠️ Active Alerts</h2>
 
-<div class="card layers">
-
-
-<div class="layerBtn"
-onclick="toggleAlerts()">
-
-⚠ Alerts
+<div id="alerts">
+No location loaded.
+</div>
 
 </div>
 
 
-<div class="layerBtn">
 
-🌧 Radar
+<div class="card">
 
-</div>
+<h2>🗺️ Radar</h2>
 
-
-<div class="layerBtn">
-
-🛰 Satellite
+<div id="map"></div>
 
 </div>
 
 
 </div>
-
-
 
 
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-
 <script>
 
-
-const map =
-L.map("map")
-.setView(
-[39.8283,-98.5795],
-4
-);
+let map;
+let radarLayer;
 
 
+async function loadWeather(){
 
-L.tileLayer(
+let zip=document.getElementById("zip").value.trim();
 
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-
-{
-maxZoom:19
-}
-
-).addTo(map);
+if(!zip)return;
 
 
-
-let alertLayer =
-L.layerGroup();
-
-
-let alertOpen=false;
-
-
-
-
-
-
-async function searchZip(){
-
-
-let zip =
-document.getElementById("zip").value;
-
-
-
-const zipData =
-await fetch(
+let geo=await fetch(
 `https://api.zippopotam.us/us/${zip}`
-)
-.then(r=>r.json());
-
-
-
-const place =
-zipData.places[0];
-
-
-
-let lat =
-Number(place.latitude);
-
-let lon =
-Number(place.longitude);
-
-
-
-map.setView(
-[lat,lon],
-9
 );
 
+let data=await geo.json();
 
+let lat=data.places[0].latitude;
+let lon=data.places[0].longitude;
 
 document.getElementById("location").innerHTML =
-`${place["place name"]}, ${place.state}`;
+`${data.places[0]["place name"]}, ${data.places[0]["state abbreviation"]}`;
 
 
 
-loadAlerts(lat,lon);
+// NWS POINT
 
+let point=await fetch(
+`https://api.weather.gov/points/${lat},${lon}`
+);
+
+let pointData=await point.json();
+
+let forecastURL=
+pointData.properties.forecast;
+
+let stationURL=
+pointData.properties.observationStations;
+
+
+
+// CURRENT OBSERVATION
+
+let stations=await fetch(stationURL);
+let stationData=await stations.json();
+
+let station=
+stationData.features[0].id;
+
+
+let obs=await fetch(
+`${station}/observations/latest`
+);
+
+let obsData=await obs.json();
+
+let p=obsData.properties;
+
+
+document.getElementById("temp").innerHTML =
+Math.round(p.temperature.value*9/5+32)+"°F";
+
+
+document.getElementById("humidity").innerHTML =
+Math.round(p.relativeHumidity.value)+"%";
+
+
+document.getElementById("wind").innerHTML =
+Math.round(p.windSpeed.value*0.621371)+" mph";
+
+
+
+document.getElementById("updated").innerHTML =
+"Updated "+new Date().toLocaleTimeString();
+
+
+
+// ALERTS
+
+let alerts=await fetch(
+`https://api.weather.gov/alerts/active?point=${lat},${lon}`
+);
+
+let alertData=await alerts.json();
+
+let alertBox=document.getElementById("alerts");
+
+alertBox.innerHTML="";
+
+
+if(alertData.features.length===0){
+
+alertBox.innerHTML="No active alerts.";
 
 }
 
+else{
 
+alertData.features.forEach(a=>{
 
+let div=document.createElement("div");
 
-async function loadAlerts(lat,lon){
+div.className="alert";
 
+div.innerHTML=`
 
-let point =
-await fetch(
-`https://api.weather.gov/points/${lat},${lon}`
-)
-.then(r=>r.json());
+<b>${a.properties.event}</b>
 
+<p>${a.properties.headline || ""}</p>
 
-
-let zone =
-point.properties.forecastZone
-.split("/")
-.pop();
-
-
-
-let data =
-await fetch(
-`https://api.weather.gov/alerts/active?zone=${zone}`
-)
-.then(r=>r.json());
-
-
-
-document.getElementById("alertList").innerHTML="";
-
-alertLayer.clearLayers();
-
-
-
-data.features.forEach(a=>{
-
-
-let p=a.properties;
-
-
-let type=p.event.toLowerCase();
-
-
-
-let color="yellow";
-
-
-if(type.includes("tornado"))
-color="red";
-
-else if(type.includes("thunderstorm"))
-color="orange";
-
-else if(type.includes("flood"))
-color="blue";
-
-
-
-let box =
-document.createElement("div");
-
-box.className =
-"alert "+color;
-
-
-
-box.innerHTML=
-
-`
-<b>${p.event}</b>
-<br>
-${p.areaDesc}
-<br><br>
-Expires:
-${new Date(p.expires).toLocaleString()}
 `;
 
-
-
-document.getElementById("alertList")
-.appendChild(box);
-
-
-
-if(a.geometry){
-
-
-L.geoJSON(
-a.geometry,
-{
-
-style:{
-color:
-getColor(color),
-fillOpacity:.35
-}
-
-}
-
-)
-.addTo(alertLayer);
-
-
-}
-
-
+alertBox.appendChild(div);
 
 });
 
+}
 
+
+
+// MAP
+
+if(!map){
+
+map=L.map("map").setView([lat,lon],8);
+
+
+L.tileLayer(
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+).addTo(map);
+
+
+}
+
+else{
+
+map.setView([lat,lon],8);
 
 }
 
 
 
+// RADAR
 
+if(radarLayer){
 
-function toggleAlerts(){
-
-
-alertOpen=!alertOpen;
-
-
-document.getElementById("alerts")
-.style.display =
-alertOpen?
-"block":
-"none";
-
-
-if(alertOpen)
-alertLayer.addTo(map);
-
-else
-map.removeLayer(alertLayer);
-
+map.removeLayer(radarLayer);
 
 }
 
 
+let radarTime=await fetch(
+"https://api.rainviewer.com/public/weather-maps.json"
+);
+
+let radarData=await radarTime.json();
+
+let frames=
+radarData.radar.past;
 
 
+let latest=
+frames[frames.length-1].path;
 
-function getColor(c){
 
-return {
+radarLayer=L.tileLayer(
+`https://tilecache.rainviewer.com${latest}/256/{z}/{x}/{y}/2/1_1.png`,
+{
+opacity:.55
+}
+);
 
-red:"#ef4444",
 
-orange:"#f97316",
+radarLayer.addTo(map);
 
-blue:"#3b82f6",
-
-yellow:"#eab308"
-
-}[c];
 
 }
 
@@ -677,5 +361,4 @@ yellow:"#eab308"
 
 
 </body>
-
 </html>
