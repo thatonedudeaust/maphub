@@ -5,10 +5,10 @@
 Your choice for maps, idk 
 ## This site includes:
 - [Rail Board](https://thatonedudeaust.github.io/maphub/rail-board)
-> Deticated to mapping trains in America & Canada
+> Deticated to mapping trains in America & Canada.
 
-- [Temp](https://thatonedudeaust.github.io/maphub/temp)
-> Temp
+- [MapHub Weather](https://thatonedudeaust.github.io/maphub/maphub-weather)
+> Your #1 source for detailed weather, right from the NWS!
 
 
 ## Disclamer
