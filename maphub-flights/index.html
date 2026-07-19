@@ -141,7 +141,7 @@ main{flex:1;display:flex;min-height:0;}
 <header>
   <div class="brand">
     <h1>MapHub Flights</h1>
-    <div class="sub">LIVE ADS-B &middot; OPENSKY NETWORK</div>
+    <div class="sub">LIVE ADS-B &middot; ADSB.LOL NETWORK</div>
   </div>
   <a href="https://thatonedudeaust.github.io/maphub" class="back-link">&larr; Back to MapHub</a>
   <div class="clock" id="clock">--:--:--</div>
@@ -174,15 +174,15 @@ tickClock();
 setInterval(tickClock, 1000);
 
 const REGIONS = {
-  local:{ name:'South Jersey / Philly', box:[39.55,-75.55,40.15,-74.55], zoom:9 },
-  ny:{ name:'NYC Metro', box:[40.35,-74.55,41.05,-73.35], zoom:9 },
-  ne:{ name:'Northeast US', box:[38.5,-79.5,43.5,-69.5], zoom:6 }
+  local:{ name:'South Jersey / Philly', lat:39.85, lon:-75.05, distNm:40, zoom:9 },
+  ny:{ name:'NYC Metro', lat:40.71, lon:-74.15, distNm:40, zoom:9 },
+  ne:{ name:'Northeast US', lat:41.2, lon:-74.5, distNm:220, zoom:6 }
 };
 let currentRegion = 'local';
 let searchTerm = '';
 let selectedIcao = null;
 
-const map = L.map('map', {zoomControl:true}).setView([39.85,-75.05], REGIONS.local.zoom);
+const map = L.map('map', {zoomControl:true}).setView([REGIONS.local.lat, REGIONS.local.lon], REGIONS.local.zoom);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution:'&copy; OpenStreetMap contributors',
   maxZoom:18
@@ -204,8 +204,45 @@ function planeIcon(track, ground, selected){
   });
 }
 
-function metersToFeet(m){ return m == null ? null : Math.round(m * 3.28084); }
-function msToKts(ms){ return ms == null ? null : Math.round(ms * 1.94384); }
+function metersToFeet(v){ return v; } // adsb.lol already reports altitude in feet
+function msToKts(v){ return v; } // adsb.lol already reports speed in knots
+
+async function fetchFlights(){
+  const statusEl = document.getElementById('board-status');
+  const statusText = document.getElementById('status-text');
+  const r = REGIONS[currentRegion];
+  try {
+    const url = `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Bad response ' + res.status);
+    const data = await res.json();
+    const aircraft = data.ac || [];
+    allFlights = aircraft.map(a => {
+      const onGround = a.alt_baro === 'ground';
+      return {
+        icao24: a.hex || '',
+        callsign: (a.flight || '').trim(),
+        originCountry: [a.t, a.r].filter(Boolean).join(' &middot; '),
+        lon: a.lon,
+        lat: a.lat,
+        altitude: onGround ? 0 : (typeof a.alt_baro === 'number' ? a.alt_baro : (a.alt_geom || null)),
+        onGround: onGround,
+        velocity: a.gs != null ? a.gs : null,
+        track: a.track != null ? a.track : (a.true_heading != null ? a.true_heading : null)
+      };
+    }).filter(f => f.icao24 && f.lat != null && f.lon != null);
+
+    renderMap(allFlights);
+    renderList();
+    statusEl.classList.remove('stale');
+    statusText.textContent = 'Live';
+    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
+  } catch (err) {
+    statusEl.classList.add('stale');
+    statusText.textContent = 'Scope offline (feed unreachable)';
+    console.error('adsb.lol fetch failed:', err);
+  }
+}
 
 function renderMap(flights){
   const seen = new Set();
@@ -226,7 +263,7 @@ function renderMap(flights){
     const spd = msToKts(f.velocity);
     markers[f.icao24].bindPopup(
       `<div class="popup-title">${f.callsign || 'Unknown'}</div>`+
-      `<div class="popup-line">Origin: ${f.originCountry || 'Unknown'}</div>`+
+      `<div class="popup-line">Type/Reg: ${f.originCountry || 'Unknown'}</div>`+
       `<div class="popup-line">Altitude: ${alt != null ? alt.toLocaleString()+' ft' : (f.onGround ? 'On ground' : 'N/A')}</div>`+
       `<div class="popup-line">Speed: ${spd != null ? spd+' kt' : 'N/A'}</div>`+
       `<div class="popup-line">Heading: ${f.track != null ? Math.round(f.track)+'\u00b0' : 'N/A'}</div>`
@@ -292,7 +329,7 @@ document.querySelectorAll('.chip').forEach(chip => {
     chip.classList.add('active');
     currentRegion = chip.dataset.region;
     const r = REGIONS[currentRegion];
-    map.setView([(r.box[0]+r.box[2])/2, (r.box[1]+r.box[3])/2], r.zoom);
+    map.setView([r.lat, r.lon], r.zoom);
     fetchFlights();
   });
 });
@@ -302,39 +339,7 @@ document.getElementById('search-box').addEventListener('input', (e) => {
   renderList();
 });
 
-async function fetchFlights(){
-  const statusEl = document.getElementById('board-status');
-  const statusText = document.getElementById('status-text');
-  const r = REGIONS[currentRegion];
-  try {
-    const url = `https://opensky-network.org/api/states/all?lamin=${r.box[0]}&lomin=${r.box[1]}&lamax=${r.box[2]}&lomax=${r.box[3]}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Bad response ' + res.status);
-    const data = await res.json();
-    const states = data.states || [];
-    allFlights = states.map(s => ({
-      icao24: s[0] ? s[0].trim() : '',
-      callsign: s[1] ? s[1].trim() : '',
-      originCountry: s[2],
-      lon: s[5],
-      lat: s[6],
-      altitude: s[7] != null ? s[7] : s[13],
-      onGround: s[8],
-      velocity: s[9],
-      track: s[10]
-    })).filter(f => f.icao24);
 
-    renderMap(allFlights);
-    renderList();
-    statusEl.classList.remove('stale');
-    statusText.textContent = 'Live';
-    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
-  } catch (err) {
-    statusEl.classList.add('stale');
-    statusText.textContent = 'Scope offline (feed unreachable)';
-    console.error('OpenSky fetch failed:', err);
-  }
-}
 
 fetchFlights();
 setInterval(fetchFlights, 15000);
