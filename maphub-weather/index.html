@@ -233,7 +233,7 @@ body{
 
   <div class="tuning">
     <label for="zip">Tune to ZIP</label>
-    <input type="text" id="zip" class="tuning-input" placeholder="08054" maxlength="5" inputmode="numeric">
+    <input type="text" id="zip" class="tuning-input" placeholder="ZIP code" maxlength="5" inputmode="numeric">
     <button class="tune-btn" id="tune-btn" onclick="loadWeather()">Tune In</button>
   </div>
 
@@ -334,20 +334,40 @@ async function loadWeather(){
     const stationsData = await stationsRes.json();
     const stationId = (stationsData.features.find(s => s.properties && s.properties.name) || stationsData.features[0]).id;
 
-    const obsRes = await fetch(`${stationId}/observations/latest`);
-    const obsData = await obsRes.json();
-    const p = obsData.properties;
+    // Pull a short window of recent observations instead of just the single
+    // latest one — individual automated readings often omit a field or two
+    // (e.g. pressure reporting on a different cycle than temp/wind), so we
+    // backfill each field from the most recent observation that actually has it.
+    const obsListRes = await fetch(`${stationId}/observations?limit=8`);
+    const obsListData = await obsListRes.json();
+    const observations = (obsListData.features || []).map(f => f.properties);
+
+    function firstAvailable(field){
+      const found = observations.find(p => p[field] && p[field].value !== null && p[field].value !== undefined);
+      return found ? found[field].value : null;
+    }
+    function firstAvailableText(field){
+      const found = observations.find(p => p[field]);
+      return found ? found[field] : null;
+    }
 
     function toF(value){
       return (value === null || value === undefined) ? 'N/A' : Math.round(value * 9/5 + 32) + '\u00b0';
     }
 
-    document.getElementById('temp').textContent = toF(p.temperature && p.temperature.value);
-    document.getElementById('feels').textContent = toF(p.apparentTemperature && p.apparentTemperature.value);
-    document.getElementById('humidity').textContent = (p.relativeHumidity && p.relativeHumidity.value != null) ? Math.round(p.relativeHumidity.value) + '%' : 'N/A';
-    document.getElementById('wind').textContent = (p.windSpeed && p.windSpeed.value != null) ? Math.round(p.windSpeed.value * 0.621371) + ' mph' : 'N/A';
-    document.getElementById('pressure').textContent = (p.barometricPressure && p.barometricPressure.value != null) ? Math.round(p.barometricPressure.value / 100) + ' mb' : 'N/A';
-    document.getElementById('condition').textContent = p.textDescription || 'Unknown';
+    const tempVal = firstAvailable('temperature');
+    const feelsVal = firstAvailable('apparentTemperature') !== null ? firstAvailable('apparentTemperature') : tempVal;
+    const humidityVal = firstAvailable('relativeHumidity');
+    const windVal = firstAvailable('windSpeed');
+    const pressureVal = firstAvailable('barometricPressure');
+    const conditionText = firstAvailableText('textDescription');
+
+    document.getElementById('temp').textContent = toF(tempVal);
+    document.getElementById('feels').textContent = toF(feelsVal);
+    document.getElementById('humidity').textContent = (humidityVal !== null) ? Math.round(humidityVal) + '%' : 'N/A';
+    document.getElementById('wind').textContent = (windVal !== null) ? Math.round(windVal * 0.621371) + ' mph' : 'N/A';
+    document.getElementById('pressure').textContent = (pressureVal !== null) ? Math.round(pressureVal / 100) + ' mb' : 'N/A';
+    document.getElementById('condition').textContent = conditionText || 'Unknown';
     document.getElementById('updated').textContent = 'Last update ' + new Date().toLocaleTimeString('en-US',{hour12:false});
 
     const alertsRes = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
