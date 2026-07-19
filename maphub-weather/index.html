@@ -1,110 +1,431 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>MapHub Weather</title>
 
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<link 
+rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"
+/>
 
 <style>
-html,body{
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+
+* {
+    box-sizing:border-box;
+}
+
+
+body {
+
     margin:0;
-    height:100%;
-    font-family:Arial;
+    font-family:Inter,Arial,sans-serif;
+    overflow:hidden;
+    background:#07111f;
+
 }
 
-#map{
-    height:100%;
+
+#map {
+
+    height:100vh;
+    width:100%;
+
 }
 
-.panel{
+
+
+.card {
+
     position:absolute;
     z-index:999;
-    top:15px;
-    left:15px;
 
-    background:#151515;
+    background:rgba(15,23,42,.85);
+
+    backdrop-filter:blur(18px);
+
     color:white;
 
-    padding:15px;
-    border-radius:12px;
+    border-radius:22px;
 
-    width:270px;
+    box-shadow:
+    0 15px 40px rgba(0,0,0,.4);
+
 }
 
-.title{
-    font-size:22px;
-    font-weight:bold;
+
+
+.header {
+
+    top:20px;
+    left:20px;
+
+    padding:18px 22px;
+
 }
 
-input{
-    width:100%;
-    padding:8px;
-    margin-top:8px;
-    border-radius:6px;
-    border:none;
+
+
+.logo {
+
+    font-size:25px;
+    font-weight:800;
+
 }
 
-button{
-    width:100%;
-    margin-top:8px;
+
+
+.small {
+
+    color:#94a3b8;
+    font-size:13px;
+
+}
+
+
+
+.search {
+
+    margin-top:15px;
+
+    display:flex;
+    gap:8px;
+
+}
+
+
+
+input {
+
+    width:150px;
+
     padding:10px;
 
-    background:#1677ff;
-    color:white;
+    border-radius:12px;
 
     border:none;
-    border-radius:8px;
+
+    background:#1e293b;
+
+    color:white;
+
+}
+
+
+
+button {
+
+    border:none;
+
+    background:#2563eb;
+
+    color:white;
+
+    border-radius:12px;
+
+    padding:10px 15px;
 
     cursor:pointer;
+
+    font-weight:600;
+
 }
 
-button:hover{
-    background:#005ddd;
+
+
+button:hover {
+
+    background:#1d4ed8;
+
 }
 
-.status{
-    margin-top:10px;
-    font-size:13px;
+
+
+
+.weather {
+
+    top:20px;
+
+    right:20px;
+
+    padding:20px;
+
+    width:240px;
+
+    text-align:center;
+
 }
+
+
+
+.location {
+
+    font-size:16px;
+
+    color:#cbd5e1;
+
+}
+
+
+
+.temp {
+
+    font-size:60px;
+
+    font-weight:800;
+
+}
+
+
+
+.condition {
+
+    font-size:18px;
+
+}
+
+
+
+.stats {
+
+    margin-top:15px;
+
+    color:#cbd5e1;
+
+    font-size:14px;
+
+}
+
+
+
+
+.alertPanel {
+
+    right:20px;
+
+    bottom:90px;
+
+    width:320px;
+
+    max-height:400px;
+
+    overflow:auto;
+
+    padding:15px;
+
+    display:none;
+
+}
+
+
+
+.alert {
+
+    background:#1e293b;
+
+    padding:14px;
+
+    border-radius:15px;
+
+    margin-bottom:10px;
+
+}
+
+
+
+.red {
+    border-left:5px solid #ef4444;
+}
+
+.orange {
+    border-left:5px solid #f97316;
+}
+
+.yellow {
+    border-left:5px solid #eab308;
+}
+
+.blue {
+    border-left:5px solid #3b82f6;
+}
+
+
+
+
+
+.layers {
+
+    bottom:20px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    padding:12px;
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+
+
+.layerBtn {
+
+    background:#1e293b;
+
+    padding:12px 18px;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}
+
+
+
+.layerBtn:hover {
+
+    background:#334155;
+
+}
+
+
+
 </style>
 
 </head>
 
+
 <body>
 
 
-<div class="panel">
-
-<div class="title">
-🌦️ MapHub Weather
-</div>
-
-<p>Enter ZIP Code</p>
-
-<input id="zip" placeholder="Example: 08080">
-
-
-<button onclick="loadZip()">
-📍 Load Weather Map
-</button>
-
-
-<button onclick="toggleWarnings()">
-🚨 Show Warnings
-</button>
-
-
-<div class="status" id="status">
-Ready
-</div>
-
-</div>
-
-
 <div id="map"></div>
+
+
+
+<div class="card header">
+
+
+<div class="logo">
+🌦 MapHub Weather
+</div>
+
+
+<div class="small">
+National Weather Service Data
+</div>
+
+
+
+<div class="search">
+
+<input 
+id="zip"
+placeholder="ZIP Code">
+
+
+<button onclick="searchZip()">
+Search
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+
+<div class="card weather">
+
+
+<div class="location" id="location">
+Select location
+</div>
+
+
+<div class="temp">
+--°
+</div>
+
+
+<div class="condition">
+Weather Map
+</div>
+
+
+<div class="stats">
+
+💨 Wind -- mph<br>
+
+💧 Humidity --%
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div class="card alertPanel" id="alerts">
+
+
+<h3>
+⚠ Active Alerts
+</h3>
+
+
+<div id="alertList">
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div class="card layers">
+
+
+<div class="layerBtn"
+onclick="toggleAlerts()">
+
+⚠ Alerts
+
+</div>
+
+
+<div class="layerBtn">
+
+🌧 Radar
+
+</div>
+
+
+<div class="layerBtn">
+
+🛰 Satellite
+
+</div>
+
+
+</div>
+
+
+
 
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -114,7 +435,7 @@ Ready
 
 
 const map =
-L.map('map')
+L.map("map")
 .setView(
 [39.8283,-98.5795],
 4
@@ -123,24 +444,29 @@ L.map('map')
 
 
 L.tileLayer(
-'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+
 {
 maxZoom:19
 }
+
 ).addTo(map);
 
 
 
-let marker;
-
-let warningLayer =
+let alertLayer =
 L.layerGroup();
 
-let warningsVisible=false;
+
+let alertOpen=false;
 
 
 
-async function loadZip(){
+
+
+
+async function searchZip(){
 
 
 let zip =
@@ -148,47 +474,24 @@ document.getElementById("zip").value;
 
 
 
-if(!zip){
-
-alert("Enter a ZIP code");
-
-return;
-
-}
-
-
-
-document.getElementById("status").innerHTML =
-"Finding location...";
-
-
-
-try{
-
-
-let response =
+const zipData =
 await fetch(
 `https://api.zippopotam.us/us/${zip}`
-);
+)
+.then(r=>r.json());
 
 
 
-let data =
-await response.json();
-
-
-
-let place =
-data.places[0];
+const place =
+zipData.places[0];
 
 
 
 let lat =
-parseFloat(place.latitude);
-
+Number(place.latitude);
 
 let lon =
-parseFloat(place.longitude);
+Number(place.longitude);
 
 
 
@@ -199,37 +502,12 @@ map.setView(
 
 
 
-if(marker)
-map.removeLayer(marker);
+document.getElementById("location").innerHTML =
+`${place["place name"]}, ${place.state}`;
 
 
 
-marker =
-L.marker([lat,lon])
-.addTo(map)
-.bindPopup(
-`
-<b>${place["place name"]}</b><br>
-${place.state}
-`
-)
-.openPopup();
-
-
-
-document.getElementById("status").innerHTML =
-"Loaded "+place["place name"];
-
-
-
-}
-
-catch(e){
-
-document.getElementById("status").innerHTML =
-"Invalid ZIP code";
-
-}
+loadAlerts(lat,lon);
 
 
 }
@@ -237,107 +515,139 @@ document.getElementById("status").innerHTML =
 
 
 
-async function toggleWarnings(){
+async function loadAlerts(lat,lon){
 
 
-if(warningsVisible){
-
-map.removeLayer(warningLayer);
-
-warningLayer.clearLayers();
-
-warningsVisible=false;
-
-
-document.getElementById("status").innerHTML =
-"Warnings hidden";
-
-return;
-
-}
-
-
-
-document.getElementById("status").innerHTML =
-"Loading NWS warnings...";
-
-
-let response =
+let point =
 await fetch(
-"https://api.weather.gov/alerts/active"
-);
+`https://api.weather.gov/points/${lat},${lon}`
+)
+.then(r=>r.json());
+
+
+
+let zone =
+point.properties.forecastZone
+.split("/")
+.pop();
 
 
 
 let data =
-await response.json();
+await fetch(
+`https://api.weather.gov/alerts/active?zone=${zone}`
+)
+.then(r=>r.json());
 
 
 
-data.features.forEach(alert=>{
+document.getElementById("alertList").innerHTML="";
 
-
-let geom =
-alert.geometry;
-
-
-if(!geom) return;
+alertLayer.clearLayers();
 
 
 
-if(geom.type==="Polygon"){
+data.features.forEach(a=>{
 
 
-let polygon =
-L.polygon(
+let p=a.properties;
 
-geom.coordinates[0].map(c=>[
-c[1],
-c[0]
-]),
 
+let type=p.event.toLowerCase();
+
+
+
+let color="yellow";
+
+
+if(type.includes("tornado"))
+color="red";
+
+else if(type.includes("thunderstorm"))
+color="orange";
+
+else if(type.includes("flood"))
+color="blue";
+
+
+
+let box =
+document.createElement("div");
+
+box.className =
+"alert "+color;
+
+
+
+box.innerHTML=
+
+`
+<b>${p.event}</b>
+<br>
+${p.areaDesc}
+<br><br>
+Expires:
+${new Date(p.expires).toLocaleString()}
+`;
+
+
+
+document.getElementById("alertList")
+.appendChild(box);
+
+
+
+if(a.geometry){
+
+
+L.geoJSON(
+a.geometry,
 {
 
-color:getColor(
-alert.properties.event
-),
-
+style:{
+color:
+getColor(color),
 fillOpacity:.35
+}
 
 }
 
-);
-
-
-
-polygon.bindPopup(
-`
-<b>${alert.properties.event}</b>
-<br><br>
-${alert.properties.headline || ""}
-`
-);
-
-
-
-warningLayer.addLayer(polygon);
+)
+.addTo(alertLayer);
 
 
 }
+
 
 
 });
 
 
 
-warningLayer.addTo(map);
-
-warningsVisible=true;
+}
 
 
-document.getElementById("status").innerHTML =
-data.features.length+
-" active warnings";
+
+
+
+function toggleAlerts(){
+
+
+alertOpen=!alertOpen;
+
+
+document.getElementById("alerts")
+.style.display =
+alertOpen?
+"block":
+"none";
+
+
+if(alertOpen)
+alertLayer.addTo(map);
+
+else
+map.removeLayer(alertLayer);
 
 
 }
@@ -345,35 +655,27 @@ data.features.length+
 
 
 
-function getColor(event){
 
-event =
-event.toLowerCase();
+function getColor(c){
 
+return {
 
+red:"#ef4444",
 
-if(event.includes("tornado"))
-return "red";
+orange:"#f97316",
 
+blue:"#3b82f6",
 
-if(event.includes("thunderstorm"))
-return "orange";
+yellow:"#eab308"
 
-
-if(event.includes("flood"))
-return "blue";
-
-
-if(event.includes("winter"))
-return "cyan";
-
-
-return "yellow";
+}[c];
 
 }
 
 
 </script>
 
+
 </body>
+
 </html>
