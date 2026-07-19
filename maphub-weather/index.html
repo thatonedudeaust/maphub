@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -9,143 +10,193 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
 <style>
-* {
-    box-sizing: border-box;
-    font-family: Inter, Arial, sans-serif;
+
+*{
+box-sizing:border-box;
+font-family:Inter,Arial,sans-serif;
 }
 
-body {
-    margin: 0;
-    background: #0b1220;
-    color: white;
+body{
+margin:0;
+background:#070d18;
+color:white;
 }
 
-header {
-    padding: 20px;
-    background: linear-gradient(135deg,#1e3a8a,#2563eb);
+header{
+padding:25px;
+background:linear-gradient(135deg,#2563eb,#0ea5e9);
 }
 
-header h1 {
-    margin: 0;
-    font-size: 32px;
+h1{
+margin:0;
+font-size:32px;
 }
 
-.search {
-    margin-top: 15px;
+.search{
+margin-top:18px;
 }
 
-input {
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    width: 220px;
-    font-size: 16px;
+input{
+padding:13px;
+border-radius:12px;
+border:none;
+width:230px;
+font-size:16px;
 }
 
-button {
-    padding: 12px 18px;
-    border-radius: 10px;
-    border:none;
-    background:#38bdf8;
-    cursor:pointer;
-    font-weight:bold;
+button{
+padding:13px 20px;
+border-radius:12px;
+border:none;
+background:white;
+color:#2563eb;
+font-weight:bold;
+cursor:pointer;
 }
 
-.container {
-    padding:20px;
-    display:grid;
-    gap:20px;
+
+.container{
+padding:20px;
+display:grid;
+gap:20px;
 }
 
-.card {
-    background:#111827;
-    border-radius:18px;
-    padding:20px;
-    box-shadow:0 10px 30px #0005;
+
+.card{
+background:#111827;
+border-radius:20px;
+padding:22px;
+box-shadow:0 10px 35px #0005;
 }
 
-.stats {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:15px;
+
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+gap:15px;
 }
 
-.stat {
-    background:#1f2937;
-    padding:15px;
-    border-radius:15px;
+
+.stat{
+background:#1e293b;
+border-radius:15px;
+padding:18px;
 }
 
-.stat h3 {
-    margin:0;
-    font-size:14px;
-    color:#94a3b8;
+
+.stat h3{
+margin:0;
+font-size:14px;
+color:#94a3b8;
 }
 
-.stat p {
-    font-size:25px;
-    margin:8px 0 0;
+
+.stat p{
+font-size:28px;
+margin:10px 0 0;
 }
 
-#map {
-    height:500px;
-    border-radius:15px;
+
+#map{
+height:520px;
+border-radius:18px;
 }
 
-.alert {
-    background:#7f1d1d;
-    border-left:5px solid #ef4444;
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:10px;
+
+.alert{
+padding:15px;
+margin-bottom:12px;
+border-radius:12px;
+background:#7f1d1d;
+border-left:5px solid #ef4444;
 }
 
-.small {
-    color:#94a3b8;
+
+.small{
+color:#94a3b8;
 }
+
 </style>
 
 </head>
 
+
 <body>
 
+
 <header>
+
 <h1>🌎 MapHub Weather</h1>
 
 <div class="search">
-<input id="zip" placeholder="Enter ZIP Code">
-<button onclick="loadWeather()">Search</button>
+
+<input id="zip" placeholder="ZIP Code">
+
+<button onclick="loadWeather()">
+Search
+</button>
+
 </div>
+
 </header>
+
 
 
 <div class="container">
 
+
 <div class="card">
 
-<h2 id="location">Enter a ZIP code</h2>
+<h2 id="location">
+Enter ZIP code
+</h2>
+
 <p class="small" id="updated"></p>
 
+
 <div class="stats">
+
+
+<div class="stat">
+<h3>Condition</h3>
+<p id="condition">--</p>
+</div>
+
 
 <div class="stat">
 <h3>Temperature</h3>
 <p id="temp">--</p>
 </div>
 
+
+<div class="stat">
+<h3>Feels Like</h3>
+<p id="feels">--</p>
+</div>
+
+
 <div class="stat">
 <h3>Humidity</h3>
 <p id="humidity">--</p>
 </div>
+
 
 <div class="stat">
 <h3>Wind</h3>
 <p id="wind">--</p>
 </div>
 
+
+<div class="stat">
+<h3>Pressure</h3>
+<p id="pressure">--</p>
+</div>
+
+
 </div>
 
 </div>
+
 
 
 
@@ -161,13 +212,16 @@ No location loaded.
 
 
 
+
+
 <div class="card">
 
-<h2>🗺️ Radar</h2>
+<h2>🗺 Radar</h2>
 
 <div id="map"></div>
 
 </div>
+
 
 
 </div>
@@ -176,133 +230,231 @@ No location loaded.
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
+
+
 <script>
 
+
 let map;
-let radarLayer;
+let radar;
+
 
 
 async function loadWeather(){
 
-let zip=document.getElementById("zip").value.trim();
 
-if(!zip)return;
+try{
+
+
+let zip=document.getElementById("zip").value.trim();
 
 
 let geo=await fetch(
 `https://api.zippopotam.us/us/${zip}`
 );
 
-let data=await geo.json();
 
-let lat=data.places[0].latitude;
-let lon=data.places[0].longitude;
+if(!geo.ok)
+throw "ZIP not found";
 
-document.getElementById("location").innerHTML =
-`${data.places[0]["place name"]}, ${data.places[0]["state abbreviation"]}`;
+
+let location=await geo.json();
+
+
+let lat=location.places[0].latitude;
+let lon=location.places[0].longitude;
+
+
+
+document.getElementById("location").innerHTML=
+`${location.places[0]["place name"]}, ${location.places[0]["state abbreviation"]}`;
+
+
+
 
 
 
 // NWS POINT
 
+
 let point=await fetch(
 `https://api.weather.gov/points/${lat},${lon}`
 );
 
+
 let pointData=await point.json();
 
-let forecastURL=
-pointData.properties.forecast;
-
-let stationURL=
-pointData.properties.observationStations;
 
 
 
-// CURRENT OBSERVATION
 
-let stations=await fetch(stationURL);
+// OBSERVATION STATION
+
+
+let stations=await fetch(
+pointData.properties.observationStations
+);
+
+
 let stationData=await stations.json();
 
+
+
 let station=
+stationData.features.find(
+s=>s.properties.name
+)?.id
+||
 stationData.features[0].id;
+
+
+
 
 
 let obs=await fetch(
 `${station}/observations/latest`
 );
 
-let obsData=await obs.json();
 
-let p=obsData.properties;
-
-
-document.getElementById("temp").innerHTML =
-Math.round(p.temperature.value*9/5+32)+"°F";
+let observation=await obs.json();
 
 
-document.getElementById("humidity").innerHTML =
-Math.round(p.relativeHumidity.value)+"%";
-
-
-document.getElementById("wind").innerHTML =
-Math.round(p.windSpeed.value*0.621371)+" mph";
+let p=observation.properties;
 
 
 
-document.getElementById("updated").innerHTML =
+// WEATHER VALUES
+
+
+function temp(value){
+
+if(value===null||value===undefined)
+return "N/A";
+
+return Math.round(value*9/5+32)+"°F";
+
+}
+
+
+document.getElementById("temp").innerHTML=
+temp(p.temperature.value);
+
+
+
+document.getElementById("feels").innerHTML=
+temp(p.apparentTemperature.value);
+
+
+
+document.getElementById("humidity").innerHTML=
+p.relativeHumidity?.value != null
+?
+Math.round(p.relativeHumidity.value)+"%"
+:
+"N/A";
+
+
+
+document.getElementById("wind").innerHTML=
+p.windSpeed?.value != null
+?
+Math.round(p.windSpeed.value*0.621371)+" mph"
+:
+"N/A";
+
+
+
+document.getElementById("pressure").innerHTML=
+p.barometricPressure?.value != null
+?
+Math.round(p.barometricPressure.value/100)+" mb"
+:
+"N/A";
+
+
+
+document.getElementById("condition").innerHTML=
+p.textDescription || "Unknown";
+
+
+
+document.getElementById("updated").innerHTML=
 "Updated "+new Date().toLocaleTimeString();
+
+
+
 
 
 
 // ALERTS
 
+
 let alerts=await fetch(
 `https://api.weather.gov/alerts/active?point=${lat},${lon}`
 );
 
+
 let alertData=await alerts.json();
 
-let alertBox=document.getElementById("alerts");
 
-alertBox.innerHTML="";
+
+let box=document.getElementById("alerts");
+
+box.innerHTML="";
+
 
 
 if(alertData.features.length===0){
 
-alertBox.innerHTML="No active alerts.";
+box.innerHTML="No active alerts.";
 
 }
+
 
 else{
 
+
 alertData.features.forEach(a=>{
+
 
 let div=document.createElement("div");
 
+
 div.className="alert";
 
-div.innerHTML=`
 
+div.innerHTML=
+`
 <b>${a.properties.event}</b>
 
-<p>${a.properties.headline || ""}</p>
-
+<p>
+${a.properties.headline || ""}
+</p>
 `;
 
-alertBox.appendChild(div);
+box.appendChild(div);
+
 
 });
 
+
 }
+
+
+
 
 
 
 // MAP
 
+
 if(!map){
 
-map=L.map("map").setView([lat,lon],8);
+
+map=L.map("map").setView(
+[lat,lon],
+8
+);
 
 
 L.tileLayer(
@@ -320,45 +472,64 @@ map.setView([lat,lon],8);
 
 
 
+
+
 // RADAR
 
-if(radarLayer){
 
-map.removeLayer(radarLayer);
-
-}
+if(radar)
+map.removeLayer(radar);
 
 
-let radarTime=await fetch(
+
+let radarData=await fetch(
 "https://api.rainviewer.com/public/weather-maps.json"
 );
 
-let radarData=await radarTime.json();
 
-let frames=
-radarData.radar.past;
+let r=await radarData.json();
 
 
 let latest=
-frames[frames.length-1].path;
+r.radar.past[
+r.radar.past.length-1
+];
 
 
-radarLayer=L.tileLayer(
-`https://tilecache.rainviewer.com${latest}/256/{z}/{x}/{y}/2/1_1.png`,
+
+radar=L.tileLayer(
+`https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`,
 {
 opacity:.55
 }
 );
 
 
-radarLayer.addTo(map);
+radar.addTo(map);
+
 
 
 }
+
+
+catch(err){
+
+alert(
+"Could not load weather data."
+);
+
+console.error(err);
+
+}
+
+
+}
+
 
 
 </script>
 
 
 </body>
+
 </html>
