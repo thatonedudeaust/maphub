@@ -1,1 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rail Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
+:root{
+  --bg-deep:#0c1411;
+  --panel:#121b17;
+  --panel-raised:#182420;
+  --rule:#33453c;
+  --rule-dim:#233029;
+  --paper:#e9e2cd;
+  --paper-dim:#ddd4ba;
+  --ink:#20281f;
+  --ink-dim:#5a6357;
+  --amber:#f2a93b;
+  --amber-dim:#8a672a;
+  --green-signal:#5fbe7a;
+  --red-signal:#e1503f;
+  --text-primary:#e8e2cf;
+  --text-muted:#8fa097;
+  --text-faint:#4d5c53;
+  --font-display:'Special Elite', serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-sans);}
+body{display:flex;flex-direction:column;overflow:hidden;}
+
+/* ---------- Header ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px;
+  background:var(--panel);
+  border-bottom:2px solid var(--rule);
+  flex-shrink:0;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.brand{display:flex;align-items:baseline;gap:12px;}
+.brand h1{
+  font-family:var(--font-display);
+  font-size:20px;
+  letter-spacing:2px;
+  margin:0;
+  color:var(--amber);
+  text-transform:uppercase;
+}
+.brand .sub{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:1px;}
+.clock{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);letter-spacing:1px;white-space:nowrap;}
+
+nav.tabs{display:flex;gap:2px;background:var(--panel-raised);border:1px solid var(--rule);border-radius:3px;overflow:hidden;}
+nav.tabs button{
+  font-family:var(--font-mono);font-size:12px;letter-spacing:1px;
+  background:transparent;border:none;color:var(--text-muted);
+  padding:9px 16px;cursor:pointer;text-transform:uppercase;
+  border-right:1px solid var(--rule);
+}
+nav.tabs button:last-child{border-right:none;}
+nav.tabs button.active{background:var(--amber);color:#1a1409;font-weight:600;}
+nav.tabs button:hover:not(.active){background:var(--rule-dim);color:var(--text-primary);}
+nav.tabs button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px;}
+
+/* ---------- Layout ---------- */
+main{flex:1;display:flex;min-height:0;position:relative;}
+.view{display:none;flex:1;min-height:0;}
+.view.active{display:flex;}
+
+/* ---------- Live board view ---------- */
+#view-live{}
+#board-panel{
+  width:340px;flex-shrink:0;
+  background:var(--panel);
+  border-right:2px solid var(--rule);
+  display:flex;flex-direction:column;min-height:0;
+}
+.board-header{
+  padding:12px 14px 8px;border-bottom:1px solid var(--rule-dim);
+}
+.board-header .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--amber-dim);text-transform:uppercase;}
+.board-header .count{font-family:var(--font-mono);font-size:26px;color:var(--text-primary);margin-top:2px;}
+.board-header .count span{font-size:13px;color:var(--text-muted);margin-left:6px;}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--rule-dim);}
+.chip{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.5px;
+  padding:5px 10px;border:1px solid var(--rule);border-radius:2px;
+  background:transparent;color:var(--text-muted);cursor:pointer;text-transform:uppercase;
+}
+.chip.active{background:var(--green-signal);border-color:var(--green-signal);color:#0c1411;font-weight:600;}
+.chip:hover:not(.active){border-color:var(--text-muted);color:var(--text-primary);}
+.chip:focus-visible{outline:2px solid var(--amber);outline-offset:1px;}
+
+#search-box{
+  margin:10px 14px;padding:8px 10px;
+  background:var(--panel-raised);border:1px solid var(--rule);border-radius:2px;
+  color:var(--text-primary);font-family:var(--font-mono);font-size:12px;width:calc(100% - 28px);
+}
+#search-box::placeholder{color:var(--text-faint);}
+#search-box:focus-visible{outline:2px solid var(--amber);}
+
+#flap-list{flex:1;overflow-y:auto;padding:2px 0 12px;}
+.flap-row{
+  display:grid;grid-template-columns:44px 1fr 60px;gap:8px;align-items:center;
+  padding:9px 14px;border-bottom:1px solid var(--rule-dim);
+  font-family:var(--font-mono);cursor:pointer;
+  animation:flap-in 0.35s ease;
+}
+.flap-row:hover{background:var(--panel-raised);}
+.flap-row.selected{background:var(--panel-raised);border-left:3px solid var(--amber);padding-left:11px;}
+@keyframes flap-in{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:translateY(0);}}
+
+.flap-num{font-size:15px;font-weight:600;color:var(--amber);}
+.flap-info{min-width:0;}
+.flap-route{font-size:12px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.flap-dest{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.flap-status{font-size:10px;text-align:right;}
+.status-ontime{color:var(--green-signal);}
+.status-late{color:var(--red-signal);}
+.status-unknown{color:var(--text-faint);}
+
+#board-empty{padding:24px 14px;font-family:var(--font-mono);font-size:12px;color:var(--text-muted);line-height:1.6;}
+
+#map{flex:1;min-height:0;}
+.leaflet-popup-content-wrapper{background:var(--paper);color:var(--ink);border-radius:2px;font-family:var(--font-mono);}
+.leaflet-popup-tip{background:var(--paper);}
+.popup-title{font-weight:600;font-size:13px;margin-bottom:4px;}
+.popup-line{font-size:11px;color:var(--ink-dim);margin-top:2px;}
+
+.train-marker{
+  width:14px;height:14px;border-radius:50%;
+  background:var(--amber);border:2px solid #1a1409;
+  box-shadow:0 0 0 2px rgba(242,169,59,0.35);
+}
+.train-marker.late{background:var(--red-signal);box-shadow:0 0 0 2px rgba(225,80,63,0.35);}
+.train-marker.ontime{background:var(--green-signal);box-shadow:0 0 0 2px rgba(95,190,122,0.35);}
+
+#board-status{
+  padding:8px 14px;border-top:1px solid var(--rule-dim);
+  font-family:var(--font-mono);font-size:10px;color:var(--text-faint);
+  display:flex;justify-content:space-between;
+}
+#board-status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green-signal);margin-right:6px;}
+#board-status.stale .dot{background:var(--red-signal);}
+
+/* ---------- Freight log view ---------- */
+#view-log{flex-direction:column;overflow-y:auto;background:var(--bg-deep);}
+.log-wrap{max-width:920px;margin:0 auto;width:100%;padding:26px 24px 60px;}
+.log-intro{margin-bottom:20px;}
+.log-intro .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--amber-dim);text-transform:uppercase;}
+.log-intro h2{font-family:var(--font-display);font-size:22px;color:var(--text-primary);margin:6px 0 4px;letter-spacing:1px;}
+.log-intro p{font-family:var(--font-sans);font-size:13px;color:var(--text-muted);margin:0;max-width:60ch;line-height:1.5;}
+
+form#log-form{
+  background:var(--panel);border:1px solid var(--rule);border-radius:3px;
+  padding:18px 20px;margin-bottom:26px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px;
+}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field.wide{grid-column:span 2;}
+.field label{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;}
+.field input,.field select,.field textarea{
+  background:var(--panel-raised);border:1px solid var(--rule);border-radius:2px;
+  color:var(--text-primary);font-family:var(--font-mono);font-size:12.5px;padding:8px 9px;
+}
+.field textarea{resize:vertical;min-height:38px;}
+.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid var(--amber);}
+.form-actions{grid-column:span 4;display:flex;justify-content:flex-end;gap:10px;margin-top:2px;}
+button.primary{
+  font-family:var(--font-mono);font-size:12px;letter-spacing:1px;text-transform:uppercase;
+  background:var(--amber);color:#1a1409;border:none;border-radius:2px;
+  padding:10px 20px;cursor:pointer;font-weight:600;
+}
+button.primary:hover{background:#ffbb52;}
+button.primary:focus-visible{outline:2px solid var(--text-primary);outline-offset:2px;}
+
+.ledger-title{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+.ledger-title .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--amber-dim);text-transform:uppercase;}
+.ledger-count{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
+
+.ledger{background:var(--paper);border-radius:3px;overflow:hidden;border:1px solid var(--rule);}
+table.ledger-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);}
+table.ledger-table thead th{
+  text-align:left;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink-dim);padding:9px 12px;border-bottom:2px solid var(--paper-dim);background:#ded5b9;
+}
+table.ledger-table tbody td{padding:9px 12px;font-size:12px;color:var(--ink);border-bottom:1px solid var(--paper-dim);vertical-align:top;}
+table.ledger-table tbody tr:last-child td{border-bottom:none;}
+table.ledger-table tbody tr:hover{background:#e2d9bf;}
+.del-btn{
+  background:transparent;border:1px solid var(--ink-dim);border-radius:2px;
+  color:var(--ink-dim);font-family:var(--font-mono);font-size:10px;padding:4px 8px;cursor:pointer;
+}
+.del-btn:hover{border-color:var(--red-signal);color:var(--red-signal);}
+#ledger-empty{padding:26px 14px;font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);text-align:center;}
+
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px;}
+
+@media (max-width:760px){
+  #view-live{flex-direction:column;}
+  #board-panel{width:100%;height:44%;border-right:none;border-bottom:2px solid var(--rule);}
+  #map{height:56%;}
+  form#log-form{grid-template-columns:1fr 1fr;}
+  .field.wide{grid-column:span 2;}
+  .form-actions{grid-column:span 2;}
+}
+@media (prefers-reduced-motion:reduce){
+  .flap-row{animation:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Rail Board</h1>
+    <span class="sub">NORTHEAST CORRIDOR &amp; NATIONAL &mdash; LIVE + LOGGED</span>
+  </div>
+  <nav class="tabs">
+    <button id="tab-live" class="active">Live Board</button>
+    <button id="tab-log">Freight Log</button>
+  </nav>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<main>
+  <div id="view-live" class="view active">
+    <div id="board-panel">
+      <div class="board-header">
+        <div class="eyebrow">Amtrak &middot; active trains</div>
+        <div class="count" id="train-count">&mdash;<span>tracked now</span></div>
+      </div>
+      <div class="filters" id="filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="nec">Northeast Corridor</button>
+        <button class="chip" data-filter="keystone">Keystone</button>
+        <button class="chip" data-filter="local">Near South Jersey</button>
+      </div>
+      <input type="text" id="search-box" placeholder="Search train # or route&hellip;">
+      <div id="flap-list"></div>
+      <div id="board-status"><span><span class="dot"></span><span id="status-text">Connecting&hellip;</span></span><span id="last-update"></span></div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <div id="view-log" class="view">
+    <div class="log-wrap">
+      <div class="log-intro">
+        <div class="eyebrow">Manual entry &middot; no public feed for these</div>
+        <h2>Freight Sighting Log</h2>
+        <p>CSX and other freight moves don't have a public live-position feed &mdash; this is your own train sheet. Log what you see or hear on the scanner, and it stays saved on this device.</p>
+      </div>
+
+      <form id="log-form">
+        <div class="field">
+          <label for="f-datetime">Date / time</label>
+          <input type="datetime-local" id="f-datetime" required>
+        </div>
+        <div class="field">
+          <label for="f-railroad">Railroad</label>
+          <select id="f-railroad">
+            <option>CSX</option>
+            <option>NJ Transit</option>
+            <option>Conrail Shared Assets</option>
+            <option>Norfolk Southern</option>
+            <option>Amtrak (freight-adjacent)</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-symbol">Symbol / train ID</label>
+          <input type="text" id="f-symbol" placeholder="e.g. Q410">
+        </div>
+        <div class="field">
+          <label for="f-direction">Direction</label>
+          <select id="f-direction">
+            <option>Timetable East</option>
+            <option>Timetable West</option>
+            <option>North</option>
+            <option>South</option>
+            <option>Unknown</option>
+          </select>
+        </div>
+        <div class="field wide">
+          <label for="f-location">Location</label>
+          <input type="text" id="f-location" placeholder="e.g. Mount Laurel, Pemberton Sub" required>
+        </div>
+        <div class="field wide">
+          <label for="f-power">Power / consist notes</label>
+          <input type="text" id="f-power" placeholder="e.g. 3 units, CSX 3212 lead, mixed manifest">
+        </div>
+        <div class="field" style="grid-column:span 4;">
+          <label for="f-notes">Notes</label>
+          <textarea id="f-notes" placeholder="Anything worth remembering &mdash; DPU, defect detector call, unusual cargo&hellip;"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary">Add to log</button>
+        </div>
+      </form>
+
+      <div class="ledger-title">
+        <span class="eyebrow">Train sheet</span>
+        <span class="ledger-count" id="ledger-count">0 entries</span>
+      </div>
+      <div class="ledger">
+        <table class="ledger-table" id="ledger-table">
+          <thead>
+            <tr><th>Date/Time</th><th>Railroad</th><th>Symbol</th><th>Dir</th><th>Location</th><th>Power</th><th>Notes</th><th></th></tr>
+          </thead>
+          <tbody id="ledger-body"></tbody>
+        </table>
+        <div id="ledger-empty" style="display:none;">No entries yet &mdash; log your first sighting above.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------------- Clock ---------------- */
+function tickClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-US',{hour12:false});
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ---------------- Tabs ---------------- */
+const tabLive = document.getElementById('tab-live');
+const tabLog = document.getElementById('tab-log');
+const viewLive = document.getElementById('view-live');
+const viewLog = document.getElementById('view-log');
+let mapInitialized = false;
+
+tabLive.addEventListener('click', () => {
+  tabLive.classList.add('active'); tabLog.classList.remove('active');
+  viewLive.classList.add('active'); viewLog.classList.remove('active');
+  if(mapInitialized) setTimeout(()=>map.invalidateSize(), 50);
+});
+tabLog.addEventListener('click', () => {
+  tabLog.classList.add('active'); tabLive.classList.remove('active');
+  viewLog.classList.add('active'); viewLive.classList.remove('active');
+});
+
+/* ---------------- Map ---------------- */
+const map = L.map('map', {zoomControl:true}).setView([39.4, -76.6], 6);
+mapInitialized = true;
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  maxZoom: 18
+}).addTo(map);
+
+let markers = {};
+let allTrains = [];
+let selectedTrainId = null;
+let currentFilter = 'all';
+let searchTerm = '';
+
+const NEC_ROUTES = ['acela','northeast regional'];
+const KEYSTONE_ROUTES = ['keystone'];
+const LOCAL_HINTS = ['trenton','philadelphia','30th','newark','new york','metropark','princeton junction','cherry hill'];
+
+function classify(train){
+  const route = (train.routeName || '').toLowerCase();
+  if (NEC_ROUTES.some(r => route.includes(r))) return 'nec';
+  if (KEYSTONE_ROUTES.some(r => route.includes(r))) return 'keystone';
+  return 'other';
+}
+
+function isLocal(train){
+  const dest = (train.destName || '').toLowerCase();
+  const stations = (train.stations || []).map(s => (s.name||'').toLowerCase());
+  return LOCAL_HINTS.some(h => dest.includes(h)) || stations.some(sn => LOCAL_HINTS.some(h => sn.includes(h)));
+}
+
+function statusClass(train){
+  if (typeof train.statusMsg === 'string') {
+    const msg = train.statusMsg.toLowerCase();
+    if (msg.includes('on time')) return 'ontime';
+    if (msg.includes('late') || msg.includes('min')) return 'late';
+  }
+  return 'unknown';
+}
+
+function buildIcon(cls){
+  return L.divIcon({
+    className: '',
+    html: `<div class="train-marker ${cls}"></div>`,
+    iconSize: [14,14]
+  });
+}
+
+function renderMap(trains){
+  const seen = new Set();
+  trains.forEach(t => {
+    if (typeof t.lat !== 'number' || typeof t.lon !== 'number') return;
+    const id = t.trainID || (t.trainNum + '-' + t.lat);
+    seen.add(id);
+    const cls = statusClass(t);
+    if (markers[id]) {
+      markers[id].setLatLng([t.lat, t.lon]);
+      markers[id].setIcon(buildIcon(cls));
+    } else {
+      const m = L.marker([t.lat, t.lon], {icon: buildIcon(cls)}).addTo(map);
+      m.on('click', () => selectTrain(id));
+      markers[id] = m;
+    }
+    const dest = t.destName || t.destCode || 'Unknown';
+    const nextStop = (t.stations || []).find(s => s.status === 'Enroute' || s.status === 'Station');
+    markers[id].bindPopup(
+      `<div class="popup-title">${(t.routeName||'Train')} &middot; #${t.trainNum}</div>`+
+      `<div class="popup-line">To ${dest}</div>`+
+      (nextStop ? `<div class="popup-line">Next: ${nextStop.name}</div>` : '') +
+      `<div class="popup-line">${t.statusMsg || 'Status unknown'}</div>`
+    );
+  });
+  Object.keys(markers).forEach(id => {
+    if (!seen.has(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+  });
+}
+
+function selectTrain(id){
+  selectedTrainId = id;
+  renderList();
+  const m = markers[id];
+  if (m) { map.flyTo(m.getLatLng(), 8, {duration:0.6}); m.openPopup(); }
+}
+
+function passesFilter(t){
+  const cat = classify(t);
+  if (currentFilter === 'nec' && cat !== 'nec') return false;
+  if (currentFilter === 'keystone' && cat !== 'keystone') return false;
+  if (currentFilter === 'local' && !isLocal(t)) return false;
+  if (searchTerm) {
+    const hay = ((t.routeName||'') + ' ' + (t.trainNum||'') + ' ' + (t.destName||'')).toLowerCase();
+    if (!hay.includes(searchTerm)) return false;
+  }
+  return true;
+}
+
+function renderList(){
+  const list = document.getElementById('flap-list');
+  const filtered = allTrains.filter(passesFilter);
+  document.getElementById('train-count').innerHTML = `${allTrains.length}<span>tracked now</span>`;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.id = 'board-empty';
+    empty.textContent = allTrains.length === 0
+      ? 'Board offline or no active trains reported.'
+      : 'No trains match this filter right now.';
+    list.appendChild(empty);
+    return;
+  }
+
+  list.innerHTML = '';
+  filtered.forEach(t => {
+    const id = t.trainID || (t.trainNum + '-' + t.lat);
+    const row = document.createElement('div');
+    row.className = 'flap-row' + (id === selectedTrainId ? ' selected' : '');
+    const cls = statusClass(t);
+    row.innerHTML = `
+      <div class="flap-num">${t.trainNum}</div>
+      <div class="flap-info">
+        <div class="flap-route">${t.routeName || 'Train'}</div>
+        <div class="flap-dest">to ${t.destName || t.destCode || 'unknown'}</div>
+      </div>
+      <div class="flap-status status-${cls}">${cls === 'ontime' ? 'ON TIME' : cls === 'late' ? 'LATE' : '&mdash;'}</div>
+    `;
+    row.addEventListener('click', () => selectTrain(id));
+    list.appendChild(row);
+  });
+}
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderList();
+  });
+});
+
+document.getElementById('search-box').addEventListener('input', (e) => {
+  searchTerm = e.target.value.toLowerCase();
+  renderList();
+});
+
+/* ---------------- Fetch Amtrak data ---------------- */
+async function fetchTrains(){
+  const statusEl = document.getElementById('board-status');
+  const statusText = document.getElementById('status-text');
+  try {
+    const res = await fetch('https://api-v3.amtraker.com/v3/trains');
+    if (!res.ok) throw new Error('Bad response');
+    const data = await res.json();
+    const trains = [];
+    Object.values(data).forEach(arr => {
+      if (Array.isArray(arr)) trains.push(...arr);
+    });
+    allTrains = trains;
+    renderMap(trains);
+    renderList();
+    statusEl.classList.remove('stale');
+    statusText.textContent = 'Live';
+    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
+  } catch (err) {
+    statusEl.classList.add('stale');
+    statusText.textContent = 'Board offline (feed unreachable)';
+    console.error('Amtrak fetch failed:', err);
+  }
+}
+fetchTrains();
+setInterval(fetchTrains, 30000);
+
+/* ---------------- Freight log ---------------- */
+const STORAGE_KEY = 'freight-log-entries';
+let logEntries = [];
+
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString('en-US', {month:'2-digit', day:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false});
+}
+
+async function loadLog(){
+  try {
+    const result = await window.storage.get(STORAGE_KEY, false);
+    logEntries = result && result.value ? JSON.parse(result.value) : [];
+  } catch (err) {
+    logEntries = [];
+  }
+  renderLedger();
+}
+
+async function saveLog(){
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(logEntries), false);
+  } catch (err) {
+    console.error('Could not save freight log:', err);
+  }
+}
+
+function renderLedger(){
+  const body = document.getElementById('ledger-body');
+  const empty = document.getElementById('ledger-empty');
+  const count = document.getElementById('ledger-count');
+  const sorted = [...logEntries].sort((a,b) => new Date(b.datetime) - new Date(a.datetime));
+  count.textContent = `${logEntries.length} ${logEntries.length === 1 ? 'entry' : 'entries'}`;
+
+  if (sorted.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = '';
+  sorted.forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDateTime(entry.datetime)}</td>
+      <td>${entry.railroad}</td>
+      <td>${entry.symbol || '&mdash;'}</td>
+      <td>${entry.direction}</td>
+      <td>${entry.location}</td>
+      <td>${entry.power || '&mdash;'}</td>
+      <td>${entry.notes || '&mdash;'}</td>
+      <td><button class="del-btn" data-id="${entry.id}">Remove</button></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      logEntries = logEntries.filter(e => e.id !== btn.dataset.id);
+      await saveLog();
+      renderLedger();
+    });
+  });
+}
+
+document.getElementById('f-datetime').value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+
+document.getElementById('log-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const entry = {
+    id: 'entry-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+    datetime: document.getElementById('f-datetime').value,
+    railroad: document.getElementById('f-railroad').value,
+    symbol: document.getElementById('f-symbol').value.trim(),
+    direction: document.getElementById('f-direction').value,
+    location: document.getElementById('f-location').value.trim(),
+    power: document.getElementById('f-power').value.trim(),
+    notes: document.getElementById('f-notes').value.trim()
+  };
+  logEntries.push(entry);
+  await saveLog();
+  renderLedger();
+  e.target.reset();
+  document.getElementById('f-datetime').value = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+});
+
+loadLog();
+</script>
+</body>
+</html>
