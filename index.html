@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MapHub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0c1922;
+  --bg-deep:#081319;
+  --grid-line:rgba(154,187,201,0.06);
+  --paper:#ece4cf;
+  --paper-shadow:#d9cfae;
+  --ink:#22291f;
+  --ink-muted:#5d6156;
+  --brass:#c9903f;
+  --brass-bright:#e9ac5c;
+  --rail-signal:#e6a247;
+  --weather-signal:#7fb8c9;
+  --text-primary:#e7e1cd;
+  --text-muted:#7c93a0;
+  --text-faint:#4a5e69;
+  --font-display:'Fraunces', serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  background-image:
+    repeating-linear-gradient(0deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 32px),
+    repeating-linear-gradient(90deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 32px);
+  color:var(--text-primary);
+  font-family:var(--font-sans);
+  min-height:100vh;
+}
+
+/* ---------- Hero ---------- */
+.hero{
+  position:relative;
+  padding:90px 24px 70px;
+  text-align:center;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-160px;left:50%;transform:translateX(-50%);
+  width:640px;height:640px;border-radius:50%;
+  background:radial-gradient(circle, rgba(201,144,63,0.14) 0%, rgba(201,144,63,0) 68%);
+  pointer-events:none;
+}
+.compass{
+  width:46px;height:46px;margin:0 auto 22px;position:relative;
+  border:1px solid var(--text-faint);border-radius:50%;
+}
+.compass::before, .compass::after{
+  content:'';position:absolute;background:var(--brass);
+}
+.compass::before{top:50%;left:50%;width:1px;height:34px;transform:translate(-50%,-50%);}
+.compass::after{top:50%;left:50%;width:34px;height:1px;transform:translate(-50%,-50%);}
+.eyebrow{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:4px;color:var(--brass-bright);
+  text-transform:uppercase;position:relative;z-index:1;
+}
+.hero h1{
+  font-family:var(--font-display);font-optical-sizing:auto;font-weight:600;
+  font-size:clamp(48px,9vw,88px);letter-spacing:1px;margin:14px 0 10px;
+  color:var(--text-primary);position:relative;z-index:1;
+}
+.hero .tagline{
+  font-family:var(--font-display);font-style:italic;font-weight:500;
+  font-size:19px;color:var(--text-muted);margin:0;position:relative;z-index:1;
+}
+
+/* ---------- Sheets index ---------- */
+.sheets{
+  max-width:960px;margin:0 auto;padding:10px 24px 40px;
+  display:grid;grid-template-columns:1fr 1fr;gap:26px;
+}
+.sheet{
+  position:relative;
+  background:var(--paper);
+  border-radius:2px;
+  box-shadow:0 22px 44px rgba(0,0,0,0.35);
+  padding:30px 28px 26px;
+  color:var(--ink);
+  text-decoration:none;
+  display:block;
+  transition:transform 0.25s ease, box-shadow 0.25s ease;
+}
+.sheet:hover{transform:translateY(-4px);box-shadow:0 30px 54px rgba(0,0,0,0.45);}
+.sheet:focus-visible{outline:2px solid var(--brass-bright);outline-offset:3px;}
+
+.tick{position:absolute;width:14px;height:14px;border-color:var(--ink-muted);opacity:0.55;}
+.tick.tl{top:10px;left:10px;border-top:1.5px solid;border-left:1.5px solid;}
+.tick.tr{top:10px;right:10px;border-top:1.5px solid;border-right:1.5px solid;}
+.tick.bl{bottom:10px;left:10px;border-bottom:1.5px solid;border-left:1.5px solid;}
+.tick.br{bottom:10px;right:10px;border-bottom:1.5px solid;border-right:1.5px solid;}
+
+.sheet-label{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--ink-muted);
+  text-transform:uppercase;margin-bottom:16px;display:flex;justify-content:space-between;
+}
+.sheet-motif{width:100%;height:64px;margin-bottom:16px;opacity:0.8;}
+.sheet h2{
+  font-family:var(--font-display);font-weight:600;font-size:26px;margin:0 0 10px;color:var(--ink);
+}
+.sheet p.desc{
+  font-family:var(--font-sans);font-size:14px;line-height:1.55;color:var(--ink-muted);margin:0 0 22px;
+  border-left:2px solid var(--brass);padding-left:12px;
+}
+.sheet .open{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--ink);font-weight:600;display:inline-flex;align-items:center;gap:6px;
+}
+.sheet .open svg{transition:transform 0.2s ease;}
+.sheet:hover .open svg{transform:translateX(4px);}
+
+/* ---------- Footer ---------- */
+.footer{
+  max-width:960px;margin:10px auto 0;padding:24px 24px 70px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+}
+.stamp{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:#c96a4a;border:1.5px solid #c96a4a;border-radius:4px;
+  padding:8px 14px;transform:rotate(-3deg);opacity:0.85;
+}
+.copyright{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);letter-spacing:0.5px;}
+
+@media (max-width:700px){
+  .sheets{grid-template-columns:1fr;}
+  .hero{padding:64px 20px 46px;}
+  .footer{flex-direction:column-reverse;align-items:flex-start;}
+}
+@media (prefers-reduced-motion:reduce){
+  .sheet{transition:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="compass"></div>
+  <div class="eyebrow">Field Index &middot; Est. 2026</div>
+  <h1>MapHub</h1>
+  <p class="tagline">Your choice for maps, idk</p>
+</div>
+
+<div class="sheets">
+
+  <a class="sheet" href="rail-board.html">
+    <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+    <div class="sheet-label"><span>Sheet 01</span><span>Rail &middot; N.A.</span></div>
+    <svg class="sheet-motif" viewBox="0 0 300 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="32" x2="300" y2="32" stroke="#22291f" stroke-width="2"/>
+      <line x1="0" y1="20" x2="300" y2="20" stroke="#22291f" stroke-width="1" stroke-dasharray="6 6" opacity="0.4"/>
+      <line x1="0" y1="44" x2="300" y2="44" stroke="#22291f" stroke-width="1" stroke-dasharray="6 6" opacity="0.4"/>
+      <circle cx="60" cy="32" r="4" fill="#c9903f"/>
+      <circle cx="150" cy="32" r="4" fill="#c9903f"/>
+      <circle cx="240" cy="32" r="4" fill="#c9903f"/>
+    </svg>
+    <h2>Rail Board</h2>
+    <p class="desc">Dedicated to mapping trains in America &amp; Canada.</p>
+    <span class="open">Open sheet
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+  </a>
+
+  <a class="sheet" href="maphub-weather.html">
+    <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+    <div class="sheet-label"><span>Sheet 02</span><span>NWS &middot; NOAA</span></div>
+    <svg class="sheet-motif" viewBox="0 0 300 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="150" cy="32" r="6" fill="none" stroke="#22291f" stroke-width="1.4" opacity="0.5"/>
+      <circle cx="150" cy="32" r="16" fill="none" stroke="#22291f" stroke-width="1.2" opacity="0.4"/>
+      <circle cx="150" cy="32" r="26" fill="none" stroke="#22291f" stroke-width="1" opacity="0.3"/>
+      <line x1="150" y1="6" x2="150" y2="58" stroke="#c9903f" stroke-width="1.4" opacity="0.6"/>
+    </svg>
+    <h2>MapHub Weather</h2>
+    <p class="desc">Your #1 source for detailed weather, right from the NWS!</p>
+    <span class="open">Open sheet
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+  </a>
+
+</div>
+
+<div class="footer">
+  <span class="stamp">Heavy WIP &middot; expect bugs</span>
+  <span class="copyright">&copy; 2026 MapHub &mdash; All Rights Reserved</span>
+</div>
+
+</body>
+</html>
