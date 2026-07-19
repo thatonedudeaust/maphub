@@ -56,6 +56,15 @@ body{
   width:46px;height:46px;margin:0 auto 22px;position:relative;
   border:1px solid var(--text-faint);border-radius:50%;
 }
+.portfolio-badge{
+  position:absolute;top:28px;right:28px;z-index:2;
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--brass-bright);border:1px solid var(--brass);border-radius:20px;
+  padding:7px 12px 7px 14px;display:inline-flex;align-items:center;gap:6px;
+  text-decoration:none;background:rgba(201,144,63,0.08);
+}
+.portfolio-badge:hover{background:rgba(201,144,63,0.18);color:var(--text-primary);}
+.portfolio-badge:focus-visible{outline:2px solid var(--brass-bright);outline-offset:2px;}
 .compass::before, .compass::after{
   content:'';position:absolute;background:var(--brass);
 }
@@ -135,6 +144,7 @@ body{
   .sheets{grid-template-columns:1fr;}
   .hero{padding:64px 20px 46px;}
   .footer{flex-direction:column-reverse;align-items:flex-start;}
+  .portfolio-badge{position:static;display:inline-flex;margin-bottom:18px;}
 }
 @media (prefers-reduced-motion:reduce){
   .sheet{transition:none;}
@@ -144,6 +154,9 @@ body{
 <body>
 
 <div class="hero">
+  <a class="portfolio-badge" href="https://thatonedudeaust.com">Portfolio
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><path d="M6 3h7v7M13 3 3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </a>
   <div class="compass"></div>
   <div class="eyebrow">Field Index &middot; Est. 2026</div>
   <h1>MapHub</h1>
@@ -152,7 +165,7 @@ body{
 
 <div class="sheets">
 
-  <a class="sheet" href="rail-board.html">
+  <a class="sheet" href="rail-board">
     <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
     <div class="sheet-label"><span>Sheet 01</span><span>Rail &middot; N.A.</span></div>
     <svg class="sheet-motif" viewBox="0 0 300 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -170,7 +183,7 @@ body{
     </span>
   </a>
 
-  <a class="sheet" href="maphub-weather.html">
+  <a class="sheet" href="maphub-weather">
     <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
     <div class="sheet-label"><span>Sheet 02</span><span>NWS &middot; NOAA</span></div>
     <svg class="sheet-motif" viewBox="0 0 300 64" fill="none" xmlns="http://www.w3.org/2000/svg">
