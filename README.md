@@ -5,5 +5,9 @@
 Your choice for maps, idk 
 ## This site includes:
 - Rail maps
+- some other stuff this is still indev
+
+## Disclamer
+- This is a HEAVY work in progress, expect bugs!
 
 ***Copyright © 2026 - MapHub - All Rights Reserved*** 
