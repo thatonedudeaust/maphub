@@ -204,44 +204,94 @@ function planeIcon(track, ground, selected){
   });
 }
 
-function metersToFeet(v){ return v; } // adsb.lol already reports altitude in feet
-function msToKts(v){ return v; } // adsb.lol already reports speed in knots
+function bboxFromRegion(r){
+  const latDelta = r.distNm / 60;
+  const lonDelta = r.distNm / (60 * Math.cos(r.lat * Math.PI / 180));
+  return {
+    lamin: r.lat - latDelta, lamax: r.lat + latDelta,
+    lomin: r.lon - lonDelta, lomax: r.lon + lonDelta
+  };
+}
+
+function parseAdsbStyle(data){
+  const aircraft = data.ac || data.aircraft || [];
+  if (!Array.isArray(aircraft)) throw new Error('unexpected shape');
+  return aircraft.map(a => {
+    const onGround = a.alt_baro === 'ground';
+    return {
+      icao24: a.hex || '',
+      callsign: (a.flight || '').trim(),
+      originCountry: [a.t, a.r].filter(Boolean).join(' &middot; '),
+      lon: a.lon, lat: a.lat,
+      altitude: onGround ? 0 : (typeof a.alt_baro === 'number' ? a.alt_baro : (a.alt_geom || null)),
+      onGround, velocity: a.gs != null ? a.gs : null,
+      track: a.track != null ? a.track : (a.true_heading != null ? a.true_heading : null)
+    };
+  }).filter(f => f.icao24 && f.lat != null && f.lon != null);
+}
+
+function parseOpenSkyStyle(data){
+  const states = data.states || [];
+  return states.map(s => ({
+    icao24: s[0] ? s[0].trim() : '',
+    callsign: s[1] ? s[1].trim() : '',
+    originCountry: s[2] || '',
+    lon: s[5], lat: s[6],
+    altitude: (s[7] != null ? s[7] : s[13]) != null ? Math.round((s[7] != null ? s[7] : s[13]) * 3.28084) : null,
+    onGround: s[8],
+    velocity: s[9] != null ? Math.round(s[9] * 1.94384) : null,
+    track: s[10]
+  })).filter(f => f.icao24 && f.lat != null && f.lon != null);
+}
+
+function proxied(url, via){
+  if (via === 'allorigins') return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  if (via === 'corsproxy') return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
+function buildProviders(r){
+  const box = bboxFromRegion(r);
+  const adsbfiUrl = `https://opendata.adsb.fi/api/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;
+  const openskyUrl = `https://opensky-network.org/api/states/all?lamin=${box.lamin}&lomin=${box.lomin}&lamax=${box.lamax}&lomax=${box.lomax}`;
+  return [
+    { name:'adsb.fi', url: proxied(adsbfiUrl, 'allorigins'), parse: parseAdsbStyle },
+    { name:'adsb.fi (alt proxy)', url: proxied(adsbfiUrl, 'corsproxy'), parse: parseAdsbStyle },
+    { name:'OpenSky', url: proxied(openskyUrl, 'allorigins'), parse: parseOpenSkyStyle },
+    { name:'OpenSky (alt proxy)', url: proxied(openskyUrl, 'corsproxy'), parse: parseOpenSkyStyle }
+  ];
+}
 
 async function fetchFlights(){
   const statusEl = document.getElementById('board-status');
   const statusText = document.getElementById('status-text');
   const r = REGIONS[currentRegion];
-  try {
-    const url = `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Bad response ' + res.status);
-    const data = await res.json();
-    const aircraft = data.ac || [];
-    allFlights = aircraft.map(a => {
-      const onGround = a.alt_baro === 'ground';
-      return {
-        icao24: a.hex || '',
-        callsign: (a.flight || '').trim(),
-        originCountry: [a.t, a.r].filter(Boolean).join(' &middot; '),
-        lon: a.lon,
-        lat: a.lat,
-        altitude: onGround ? 0 : (typeof a.alt_baro === 'number' ? a.alt_baro : (a.alt_geom || null)),
-        onGround: onGround,
-        velocity: a.gs != null ? a.gs : null,
-        track: a.track != null ? a.track : (a.true_heading != null ? a.true_heading : null)
-      };
-    }).filter(f => f.icao24 && f.lat != null && f.lon != null);
+  const providers = buildProviders(r);
+  let lastError = null;
 
-    renderMap(allFlights);
-    renderList();
-    statusEl.classList.remove('stale');
-    statusText.textContent = 'Live';
-    document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
-  } catch (err) {
-    statusEl.classList.add('stale');
-    statusText.textContent = 'Scope offline (feed unreachable)';
-    console.error('adsb.lol fetch failed:', err);
+  for (const provider of providers) {
+    try {
+      const res = await fetch(provider.url);
+      if (!res.ok) { lastError = `${provider.name}: HTTP ${res.status}`; continue; }
+      const data = await res.json();
+      const flights = provider.parse(data);
+
+      allFlights = flights;
+      renderMap(allFlights);
+      renderList();
+      statusEl.classList.remove('stale');
+      statusText.textContent = `Live (${provider.name})`;
+      document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
+      return;
+    } catch (err) {
+      lastError = `${provider.name}: ${err.message}`;
+      continue;
+    }
   }
+
+  statusEl.classList.add('stale');
+  statusText.textContent = 'Scope offline (all feeds unreachable)';
+  console.error('All ADS-B providers failed. Last error:', lastError);
 }
 
 function renderMap(flights){
@@ -259,8 +309,8 @@ function renderMap(flights){
       m.on('click', () => selectFlight(f.icao24));
       markers[f.icao24] = m;
     }
-    const alt = metersToFeet(f.altitude);
-    const spd = msToKts(f.velocity);
+    const alt = f.altitude;
+    const spd = f.velocity;
     markers[f.icao24].bindPopup(
       `<div class="popup-title">${f.callsign || 'Unknown'}</div>`+
       `<div class="popup-line">Type/Reg: ${f.originCountry || 'Unknown'}</div>`+
@@ -310,7 +360,7 @@ function renderList(){
     .forEach(f => {
       const row = document.createElement('div');
       row.className = 'flight-row' + (f.onGround ? ' ground' : '') + (f.icao24 === selectedIcao ? ' selected' : '');
-      const alt = metersToFeet(f.altitude);
+      const alt = f.altitude;
       row.innerHTML = `
         <div>
           <div class="flight-call">${f.callsign || f.icao24.toUpperCase()}</div>
