@@ -1,535 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
+<title>MapHub Weather &mdash; WX Console</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>MapHub Weather</title>
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-
 <style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
-*{
-box-sizing:border-box;
-font-family:Inter,Arial,sans-serif;
+:root{
+  --case:#1b1815;
+  --case-raised:#242019;
+  --case-seam:#0e0c0a;
+  --bezel:#302a22;
+  --vfd-bg:#0a0d0a;
+  --vfd-amber:#ffb238;
+  --vfd-amber-dim:#7a5a1f;
+  --led-green:#4ddb85;
+  --led-red:#ef4a3f;
+  --led-amber:#ffb238;
+  --metal:#55503f;
+  --text-primary:#ece6d6;
+  --text-muted:#a39c88;
+  --text-faint:#6b6555;
+  --font-vfd:'VT323', monospace;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
 }
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:#0e0c0a;color:var(--text-primary);font-family:var(--font-sans);}
 
 body{
-margin:0;
-background:#070d18;
-color:white;
+  min-height:100vh;
+  padding:28px 16px 60px;
+  background:
+    radial-gradient(ellipse at top, #24201a 0%, #0e0c0a 60%);
 }
 
-header{
-padding:25px;
-background:linear-gradient(135deg,#2563eb,#0ea5e9);
+.console{
+  max-width:960px;
+  margin:0 auto;
+  background:var(--case);
+  border-radius:18px;
+  border:1px solid var(--case-seam);
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  padding:22px 22px 26px;
 }
 
-h1{
-margin:0;
-font-size:32px;
+/* ---------- Top plate ---------- */
+.plate{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 8px 18px;
+  border-bottom:1px solid #0e0c0a;
+  gap:14px;flex-wrap:wrap;
+}
+.plate-brand{display:flex;align-items:center;gap:10px;}
+.grille{
+  display:grid;grid-template-columns:repeat(5,5px);grid-template-rows:repeat(3,5px);gap:3px;
+  opacity:0.6;
+}
+.grille span{width:5px;height:5px;border-radius:50%;background:var(--case-seam);}
+.plate-brand h1{
+  font-family:var(--font-mono);font-size:15px;letter-spacing:2px;
+  margin:0;color:var(--text-primary);text-transform:uppercase;font-weight:600;
+}
+.plate-brand .model{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);letter-spacing:1px;margin-top:2px;}
+.plate-lights{display:flex;gap:14px;align-items:center;}
+.light{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;color:var(--text-faint);text-transform:uppercase;}
+.led{width:8px;height:8px;border-radius:50%;background:#2a2620;box-shadow:inset 0 0 2px #000;}
+.led.on-green{background:var(--led-green);box-shadow:0 0 8px var(--led-green);}
+.led.on-red{background:var(--led-red);box-shadow:0 0 8px var(--led-red);animation:pulse 1.4s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.45;}}
+
+/* ---------- Tuning bar ---------- */
+.tuning{
+  display:flex;gap:10px;align-items:center;padding:16px 8px;flex-wrap:wrap;
+}
+.tuning label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text-faint);text-transform:uppercase;}
+.tuning-input{
+  background:var(--vfd-bg);border:1px solid #000;border-radius:4px;
+  padding:10px 12px;color:var(--vfd-amber);font-family:var(--font-mono);font-size:15px;letter-spacing:2px;
+  width:140px;
+}
+.tuning-input::placeholder{color:var(--vfd-amber-dim);}
+.tuning-input:focus-visible{outline:2px solid var(--vfd-amber);}
+.tune-btn{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;
+  background:linear-gradient(180deg,#4a443a,#332e26);
+  color:var(--text-primary);border:1px solid #171410;border-radius:5px;
+  padding:11px 18px;cursor:pointer;
+  box-shadow:0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.tune-btn:hover{background:linear-gradient(180deg,#544d41,#3a352c);}
+.tune-btn:active{box-shadow:0 0 0 #000;transform:translateY(2px);}
+.tune-btn:focus-visible{outline:2px solid var(--vfd-amber);outline-offset:2px;}
+
+/* ---------- VFD screen ---------- */
+.vfd{
+  background:var(--vfd-bg);
+  border-radius:6px;
+  border:1px solid #000;
+  box-shadow:inset 0 0 24px rgba(0,0,0,0.7), inset 0 0 3px #000;
+  padding:18px 20px 14px;
+  position:relative;
+  overflow:hidden;
+}
+.vfd::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg, rgba(255,178,56,0.025) 0px, rgba(255,178,56,0.025) 1px, transparent 1px, transparent 3px);
+  pointer-events:none;
+}
+.vfd-location{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--vfd-amber-dim);
+  text-transform:uppercase;
+}
+.vfd-place{
+  font-family:var(--font-vfd);font-size:26px;color:var(--vfd-amber);letter-spacing:1px;
+  text-shadow:0 0 8px rgba(255,178,56,0.55);
+  margin-top:2px;
+}
+.vfd-updated{font-family:var(--font-mono);font-size:10px;color:var(--vfd-amber-dim);margin-top:4px;}
+
+.vfd-main{display:flex;align-items:flex-end;gap:18px;margin-top:10px;flex-wrap:wrap;}
+.vfd-temp{
+  font-family:var(--font-vfd);font-size:88px;line-height:0.85;color:var(--vfd-amber);
+  text-shadow:0 0 14px rgba(255,178,56,0.6);
+}
+.vfd-condition{
+  font-family:var(--font-mono);font-size:14px;color:var(--vfd-amber);letter-spacing:1px;
+  text-transform:uppercase;padding-bottom:14px;
 }
 
-.search{
-margin-top:18px;
+.vfd-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;
+  margin-top:16px;
+}
+.vfd-stat{border-top:1px solid rgba(255,178,56,0.15);padding-top:8px;}
+.vfd-stat .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;color:var(--vfd-amber-dim);text-transform:uppercase;}
+.vfd-stat .v{font-family:var(--font-vfd);font-size:28px;color:var(--vfd-amber);text-shadow:0 0 6px rgba(255,178,56,0.4);margin-top:2px;}
+
+/* ---------- Alert strip ---------- */
+.alert-strip{margin-top:18px;}
+.alert-strip .eyebrow{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--text-faint);
+  text-transform:uppercase;padding:0 4px 8px;
+}
+.alert-item{
+  display:flex;gap:10px;padding:12px 14px;border-radius:5px;margin-bottom:8px;
+  border-left:4px solid var(--led-amber);
+  background:linear-gradient(90deg, rgba(255,178,56,0.10), rgba(255,178,56,0.02));
+  font-family:var(--font-sans);
+}
+.alert-item.warning{border-left-color:var(--led-red);background:linear-gradient(90deg, rgba(239,74,63,0.14), rgba(239,74,63,0.02));}
+.alert-item.watch{border-left-color:var(--led-amber);}
+.alert-item.advisory{border-left-color:#e8d24a;background:linear-gradient(90deg, rgba(232,210,74,0.12), rgba(232,210,74,0.02));}
+.alert-item .dot{
+  flex-shrink:0;width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--led-amber);
+}
+.alert-item.warning .dot{background:var(--led-red);animation:pulse 1.4s ease-in-out infinite;}
+.alert-item.advisory .dot{background:#e8d24a;}
+.alert-item .body b{font-size:12.5px;letter-spacing:0.5px;color:var(--text-primary);text-transform:uppercase;font-family:var(--font-mono);}
+.alert-item .body p{margin:4px 0 0;font-size:12.5px;color:var(--text-muted);line-height:1.5;}
+.no-alerts{
+  font-family:var(--font-mono);font-size:12px;color:var(--text-faint);padding:12px 4px;
 }
 
-input{
-padding:13px;
-border-radius:12px;
-border:none;
-width:230px;
-font-size:16px;
+/* ---------- Radar bezel ---------- */
+.radar-section{margin-top:20px;}
+.radar-section .eyebrow{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--text-faint);
+  text-transform:uppercase;padding:0 4px 8px;display:flex;justify-content:space-between;
+}
+.radar-bezel{
+  background:var(--bezel);border-radius:10px;padding:10px;
+  display:flex;gap:10px;align-items:stretch;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,0.5);
+}
+#map{flex:1;height:380px;border-radius:6px;filter:saturate(0.9) contrast(1.05);}
+.dial-col{display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:4px 2px;}
+.dial{
+  width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #6b6455, #3a352c 70%);
+  border:1px solid #171410;box-shadow:0 2px 0 #000;
+  position:relative;
+}
+.dial::after{content:'';position:absolute;top:4px;left:50%;width:2px;height:10px;background:#0e0c0a;transform:translateX(-50%);}
+.dial-label{font-family:var(--font-mono);font-size:8px;color:var(--text-faint);letter-spacing:1px;margin-top:4px;text-align:center;}
+
+/* ---------- Footer ---------- */
+.footer{
+  margin-top:18px;padding:10px 4px 0;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;
+  font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);letter-spacing:1px;
+  border-top:1px solid var(--case-seam);
 }
 
-button{
-padding:13px 20px;
-border-radius:12px;
-border:none;
-background:white;
-color:#2563eb;
-font-weight:bold;
-cursor:pointer;
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:var(--case);}
+::-webkit-scrollbar-thumb{background:var(--metal);border-radius:4px;}
+
+@media (max-width:640px){
+  .vfd-temp{font-size:60px;}
+  .radar-bezel{flex-direction:column;}
+  .dial-col{flex-direction:row;justify-content:center;gap:16px;}
+  #map{height:300px;}
 }
-
-
-.container{
-padding:20px;
-display:grid;
-gap:20px;
+@media (prefers-reduced-motion:reduce){
+  .led.on-red, .alert-item.warning .dot{animation:none;}
 }
-
-
-.card{
-background:#111827;
-border-radius:20px;
-padding:22px;
-box-shadow:0 10px 35px #0005;
-}
-
-
-.stats{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-gap:15px;
-}
-
-
-.stat{
-background:#1e293b;
-border-radius:15px;
-padding:18px;
-}
-
-
-.stat h3{
-margin:0;
-font-size:14px;
-color:#94a3b8;
-}
-
-
-.stat p{
-font-size:28px;
-margin:10px 0 0;
-}
-
-
-#map{
-height:520px;
-border-radius:18px;
-}
-
-
-.alert{
-padding:15px;
-margin-bottom:12px;
-border-radius:12px;
-background:#7f1d1d;
-border-left:5px solid #ef4444;
-}
-
-
-.small{
-color:#94a3b8;
-}
-
 </style>
-
 </head>
-
-
 <body>
 
+<div class="console">
 
-<header>
+  <div class="plate">
+    <div class="plate-brand">
+      <div class="grille"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div>
+        <h1>MapHub Weather</h1>
+        <div class="model">WX&ndash;100 CONSOLE &middot; NWS / NOAA DATA</div>
+      </div>
+    </div>
+    <div class="plate-lights">
+      <div class="light"><span class="led on-green" id="led-power"></span>Power</div>
+      <div class="light"><span class="led" id="led-alert"></span>Alert</div>
+    </div>
+  </div>
 
-<h1>🌎 MapHub Weather</h1>
+  <div class="tuning">
+    <label for="zip">Tune to ZIP</label>
+    <input type="text" id="zip" class="tuning-input" placeholder="08054" maxlength="5" inputmode="numeric">
+    <button class="tune-btn" id="tune-btn" onclick="loadWeather()">Tune In</button>
+  </div>
 
-<div class="search">
+  <div class="vfd">
+    <div class="vfd-location">Location</div>
+    <div class="vfd-place" id="location">Awaiting ZIP&hellip;</div>
+    <div class="vfd-updated" id="updated"></div>
 
-<input id="zip" placeholder="ZIP Code">
+    <div class="vfd-main">
+      <div class="vfd-temp" id="temp">&mdash;&mdash;</div>
+      <div class="vfd-condition" id="condition">&mdash;</div>
+    </div>
 
-<button onclick="loadWeather()">
-Search
-</button>
+    <div class="vfd-grid">
+      <div class="vfd-stat"><div class="k">Feels like</div><div class="v" id="feels">&mdash;</div></div>
+      <div class="vfd-stat"><div class="k">Humidity</div><div class="v" id="humidity">&mdash;</div></div>
+      <div class="vfd-stat"><div class="k">Wind</div><div class="v" id="wind">&mdash;</div></div>
+      <div class="vfd-stat"><div class="k">Pressure</div><div class="v" id="pressure">&mdash;</div></div>
+    </div>
+  </div>
 
-</div>
+  <div class="alert-strip">
+    <div class="eyebrow">Active Alerts</div>
+    <div id="alerts"><div class="no-alerts">No location tuned in yet.</div></div>
+  </div>
 
-</header>
+  <div class="radar-section">
+    <div class="eyebrow"><span>Radar</span><span id="radar-time"></span></div>
+    <div class="radar-bezel">
+      <div id="map"></div>
+      <div class="dial-col">
+        <div><div class="dial"></div><div class="dial-label">ZOOM</div></div>
+        <div><div class="dial"></div><div class="dial-label">GAIN</div></div>
+      </div>
+    </div>
+  </div>
 
-
-
-<div class="container">
-
-
-<div class="card">
-
-<h2 id="location">
-Enter ZIP code
-</h2>
-
-<p class="small" id="updated"></p>
-
-
-<div class="stats">
-
-
-<div class="stat">
-<h3>Condition</h3>
-<p id="condition">--</p>
-</div>
-
-
-<div class="stat">
-<h3>Temperature</h3>
-<p id="temp">--</p>
-</div>
-
-
-<div class="stat">
-<h3>Feels Like</h3>
-<p id="feels">--</p>
-</div>
-
-
-<div class="stat">
-<h3>Humidity</h3>
-<p id="humidity">--</p>
-</div>
-
-
-<div class="stat">
-<h3>Wind</h3>
-<p id="wind">--</p>
-</div>
-
-
-<div class="stat">
-<h3>Pressure</h3>
-<p id="pressure">--</p>
-</div>
-
+  <div class="footer">
+    <span>DATA: api.weather.gov / rainviewer.com</span>
+    <span id="clock">--:--:--</span>
+  </div>
 
 </div>
-
-</div>
-
-
-
-
-<div class="card">
-
-<h2>⚠️ Active Alerts</h2>
-
-<div id="alerts">
-No location loaded.
-</div>
-
-</div>
-
-
-
-
-
-<div class="card">
-
-<h2>🗺 Radar</h2>
-
-<div id="map"></div>
-
-</div>
-
-
-
-</div>
-
-
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-
-
 <script>
-
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+}
+tickClock();
+setInterval(tickClock, 1000);
 
 let map;
-let radar;
+let radarLayer;
 
+function classifyAlert(event){
+  const e = (event || '').toLowerCase();
+  if (e.includes('warning')) return 'warning';
+  if (e.includes('watch')) return 'watch';
+  if (e.includes('advisory') || e.includes('statement')) return 'advisory';
+  return 'watch';
+}
 
+function setPower(state){
+  const led = document.getElementById('led-power');
+  led.classList.toggle('on-green', state === 'ok');
+}
+
+function setAlertLed(hasWarning){
+  const led = document.getElementById('led-alert');
+  led.classList.toggle('on-red', hasWarning);
+}
 
 async function loadWeather(){
+  const btn = document.getElementById('tune-btn');
+  const zip = document.getElementById('zip').value.trim();
+  if (!/^\d{5}$/.test(zip)) {
+    document.getElementById('location').textContent = 'Enter a 5-digit ZIP';
+    return;
+  }
+  btn.textContent = 'Tuning\u2026';
+  setPower('searching');
 
+  try {
+    const geoRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if (!geoRes.ok) throw new Error('ZIP not found');
+    const geo = await geoRes.json();
+    const place = geo.places[0];
+    const lat = place.latitude;
+    const lon = place.longitude;
 
-try{
+    document.getElementById('location').textContent = `${place['place name']}, ${place['state abbreviation']}`;
 
+    const pointRes = await fetch(`https://api.weather.gov/points/${lat},${lon}`);
+    const pointData = await pointRes.json();
 
-let zip=document.getElementById("zip").value.trim();
+    const stationsRes = await fetch(pointData.properties.observationStations);
+    const stationsData = await stationsRes.json();
+    const stationId = (stationsData.features.find(s => s.properties && s.properties.name) || stationsData.features[0]).id;
 
+    const obsRes = await fetch(`${stationId}/observations/latest`);
+    const obsData = await obsRes.json();
+    const p = obsData.properties;
 
-let geo=await fetch(
-`https://api.zippopotam.us/us/${zip}`
-);
+    function toF(value){
+      return (value === null || value === undefined) ? 'N/A' : Math.round(value * 9/5 + 32) + '\u00b0';
+    }
 
+    document.getElementById('temp').textContent = toF(p.temperature && p.temperature.value);
+    document.getElementById('feels').textContent = toF(p.apparentTemperature && p.apparentTemperature.value);
+    document.getElementById('humidity').textContent = (p.relativeHumidity && p.relativeHumidity.value != null) ? Math.round(p.relativeHumidity.value) + '%' : 'N/A';
+    document.getElementById('wind').textContent = (p.windSpeed && p.windSpeed.value != null) ? Math.round(p.windSpeed.value * 0.621371) + ' mph' : 'N/A';
+    document.getElementById('pressure').textContent = (p.barometricPressure && p.barometricPressure.value != null) ? Math.round(p.barometricPressure.value / 100) + ' mb' : 'N/A';
+    document.getElementById('condition').textContent = p.textDescription || 'Unknown';
+    document.getElementById('updated').textContent = 'Last update ' + new Date().toLocaleTimeString('en-US',{hour12:false});
 
-if(!geo.ok)
-throw "ZIP not found";
+    const alertsRes = await fetch(`https://api.weather.gov/alerts/active?point=${lat},${lon}`);
+    const alertData = await alertsRes.json();
+    const box = document.getElementById('alerts');
+    box.innerHTML = '';
 
+    let hasWarning = false;
+    if (!alertData.features || alertData.features.length === 0) {
+      box.innerHTML = '<div class="no-alerts">No active alerts for this area.</div>';
+    } else {
+      alertData.features.forEach(a => {
+        const cls = classifyAlert(a.properties.event);
+        if (cls === 'warning') hasWarning = true;
+        const div = document.createElement('div');
+        div.className = `alert-item ${cls}`;
+        div.innerHTML = `<span class="dot"></span><div class="body"><b>${a.properties.event}</b><p>${a.properties.headline || ''}</p></div>`;
+        box.appendChild(div);
+      });
+    }
+    setAlertLed(hasWarning);
 
-let location=await geo.json();
+    if (!map) {
+      map = L.map('map').setView([lat, lon], 8);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+    } else {
+      map.setView([lat, lon], 8);
+    }
 
+    if (radarLayer) map.removeLayer(radarLayer);
+    const radarMeta = await (await fetch('https://api.rainviewer.com/public/weather-maps.json')).json();
+    const latest = radarMeta.radar.past[radarMeta.radar.past.length - 1];
+    radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0.55 });
+    radarLayer.addTo(map);
+    document.getElementById('radar-time').textContent = new Date(latest.time * 1000).toLocaleTimeString('en-US',{hour12:false});
 
-let lat=location.places[0].latitude;
-let lon=location.places[0].longitude;
-
-
-
-document.getElementById("location").innerHTML=
-`${location.places[0]["place name"]}, ${location.places[0]["state abbreviation"]}`;
-
-
-
-
-
-
-// NWS POINT
-
-
-let point=await fetch(
-`https://api.weather.gov/points/${lat},${lon}`
-);
-
-
-let pointData=await point.json();
-
-
-
-
-
-// OBSERVATION STATION
-
-
-let stations=await fetch(
-pointData.properties.observationStations
-);
-
-
-let stationData=await stations.json();
-
-
-
-let station=
-stationData.features.find(
-s=>s.properties.name
-)?.id
-||
-stationData.features[0].id;
-
-
-
-
-
-let obs=await fetch(
-`${station}/observations/latest`
-);
-
-
-let observation=await obs.json();
-
-
-let p=observation.properties;
-
-
-
-// WEATHER VALUES
-
-
-function temp(value){
-
-if(value===null||value===undefined)
-return "N/A";
-
-return Math.round(value*9/5+32)+"°F";
-
+    setPower('ok');
+  } catch (err) {
+    document.getElementById('location').textContent = 'Signal lost \u2014 check ZIP';
+    document.getElementById('alerts').innerHTML = '<div class="no-alerts">Could not load weather data.</div>';
+    setPower('error');
+    console.error(err);
+  } finally {
+    btn.textContent = 'Tune In';
+  }
 }
 
-
-document.getElementById("temp").innerHTML=
-temp(p.temperature.value);
-
-
-
-document.getElementById("feels").innerHTML=
-temp(p.apparentTemperature.value);
-
-
-
-document.getElementById("humidity").innerHTML=
-p.relativeHumidity?.value != null
-?
-Math.round(p.relativeHumidity.value)+"%"
-:
-"N/A";
-
-
-
-document.getElementById("wind").innerHTML=
-p.windSpeed?.value != null
-?
-Math.round(p.windSpeed.value*0.621371)+" mph"
-:
-"N/A";
-
-
-
-document.getElementById("pressure").innerHTML=
-p.barometricPressure?.value != null
-?
-Math.round(p.barometricPressure.value/100)+" mb"
-:
-"N/A";
-
-
-
-document.getElementById("condition").innerHTML=
-p.textDescription || "Unknown";
-
-
-
-document.getElementById("updated").innerHTML=
-"Updated "+new Date().toLocaleTimeString();
-
-
-
-
-
-
-// ALERTS
-
-
-let alerts=await fetch(
-`https://api.weather.gov/alerts/active?point=${lat},${lon}`
-);
-
-
-let alertData=await alerts.json();
-
-
-
-let box=document.getElementById("alerts");
-
-box.innerHTML="";
-
-
-
-if(alertData.features.length===0){
-
-box.innerHTML="No active alerts.";
-
-}
-
-
-else{
-
-
-alertData.features.forEach(a=>{
-
-
-let div=document.createElement("div");
-
-
-div.className="alert";
-
-
-div.innerHTML=
-`
-<b>${a.properties.event}</b>
-
-<p>
-${a.properties.headline || ""}
-</p>
-`;
-
-box.appendChild(div);
-
-
+document.getElementById('zip').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadWeather();
 });
-
-
-}
-
-
-
-
-
-
-// MAP
-
-
-if(!map){
-
-
-map=L.map("map").setView(
-[lat,lon],
-8
-);
-
-
-L.tileLayer(
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-).addTo(map);
-
-
-}
-
-else{
-
-map.setView([lat,lon],8);
-
-}
-
-
-
-
-
-// RADAR
-
-
-if(radar)
-map.removeLayer(radar);
-
-
-
-let radarData=await fetch(
-"https://api.rainviewer.com/public/weather-maps.json"
-);
-
-
-let r=await radarData.json();
-
-
-let latest=
-r.radar.past[
-r.radar.past.length-1
-];
-
-
-
-radar=L.tileLayer(
-`https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`,
-{
-opacity:.55
-}
-);
-
-
-radar.addTo(map);
-
-
-
-}
-
-
-catch(err){
-
-alert(
-"Could not load weather data."
-);
-
-console.error(err);
-
-}
-
-
-}
-
-
-
 </script>
-
-
 </body>
-
 </html>
