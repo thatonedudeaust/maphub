@@ -56,6 +56,13 @@ header{
 }
 .brand .sub{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:1px;}
 .clock{font-family:var(--font-mono);font-size:13px;color:var(--text-muted);letter-spacing:1px;white-space:nowrap;}
+.back-link{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--text-muted);text-decoration:none;border:1px solid var(--rule);border-radius:3px;
+  padding:8px 12px;white-space:nowrap;
+}
+.back-link:hover{color:var(--amber);border-color:var(--amber-dim);}
+.back-link:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
 nav.tabs{display:flex;gap:2px;background:var(--panel-raised);border:1px solid var(--rule);border-radius:3px;overflow:hidden;}
 nav.tabs button{
@@ -230,6 +237,7 @@ table.ledger-table tbody tr:hover{background:#e2d9bf;}
     <button id="tab-live" class="active">Live Board</button>
     <button id="tab-log">Freight Log</button>
   </nav>
+  <a href="https://thatonedudeaust.github.io/maphub" class="back-link">&larr; Back to MapHub</a>
   <div class="clock" id="clock">--:--:--</div>
 </header>
 
