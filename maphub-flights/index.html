@@ -192,8 +192,64 @@ map.getPane('tilePane').style.filter = 'invert(1) hue-rotate(180deg) brightness(
 
 let markers = {};
 let allFlights = [];
+let routeLine = null;
+let destAirportMarker = null;
+let currentRouteDestLatLng = null;
 
-function planeIcon(track, ground, selected){
+function clearRoute(){
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  if (destAirportMarker) { map.removeLayer(destAirportMarker); destAirportMarker = null; }
+  currentRouteDestLatLng = null;
+}
+
+function drawRoute(f, route){
+  const airports = route._airports || [];
+  if (airports.length < 2) return;
+  const dest = airports[airports.length - 1];
+  if (dest.lat == null || dest.lon == null) return;
+
+  currentRouteDestLatLng = [dest.lat, dest.lon];
+  routeLine = L.polyline([[f.lat, f.lon], currentRouteDestLatLng], {
+    color:'#ffb238', weight:1.5, dashArray:'4 6', opacity:0.85
+  }).addTo(map);
+  const origin = airports[0];
+  destAirportMarker = L.circleMarker(currentRouteDestLatLng, {
+    radius:5, color:'#ffb238', fillColor:'#ffb238', fillOpacity:0.9, weight:1
+  }).addTo(map).bindTooltip(
+    `${origin.iata || origin.icao || '?'} \u2192 ${dest.iata || dest.icao || '?'} \u2014 ${dest.name || ''}`.trim(),
+    {direction:'top'}
+  );
+  destAirportMarker.openTooltip();
+}
+
+async function fetchRouteForFlight(f){
+  clearRoute();
+  if (!f.callsign) return;
+  const body = JSON.stringify({ planes:[{ callsign:f.callsign, lat:f.lat, lng:f.lon }] });
+  const attempts = [
+    'https://api.adsb.lol/api/0/routeset',
+    proxied('https://api.adsb.lol/api/0/routeset', 'corsproxy'),
+    proxied('https://api.adsb.lol/api/0/routeset', 'allorigins')
+  ];
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) continue;
+      const route = data[0];
+      if (!route || !route.plausible) continue;
+      drawRoute(f, route);
+      return;
+    } catch (err) {
+      continue;
+    }
+  }
+}
   const rotation = track || 0;
   const cls = (selected ? 'plane-icon selected' : ground ? 'plane-icon ground' : 'plane-icon');
   const color = selected ? '#ffb238' : ground ? '#5f7a6b' : '#3dffa0';
@@ -325,8 +381,12 @@ function renderMap(flights){
     );
   });
   Object.keys(markers).forEach(id => {
-    if (!seen.has(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+    if (!seen.has(id)) { map.removeLayer(markers[id]); delete markers[id]; if (id === selectedIcao) clearRoute(); }
   });
+  if (selectedIcao && routeLine && currentRouteDestLatLng) {
+    const selectedFlight = flights.find(f => f.icao24 === selectedIcao);
+    if (selectedFlight) routeLine.setLatLngs([[selectedFlight.lat, selectedFlight.lon], currentRouteDestLatLng]);
+  }
 }
 
 function selectFlight(icao){
@@ -335,6 +395,8 @@ function selectFlight(icao){
   renderMap(allFlights);
   const m = markers[icao];
   if (m) { map.flyTo(m.getLatLng(), Math.max(map.getZoom(),9), {duration:0.6}); m.openPopup(); }
+  const flight = allFlights.find(f => f.icao24 === icao);
+  if (flight) fetchRouteForFlight(flight);
 }
 
 function passesFilter(f){
@@ -385,6 +447,8 @@ document.querySelectorAll('.chip').forEach(chip => {
     currentRegion = chip.dataset.region;
     const r = REGIONS[currentRegion];
     map.setView([r.lat, r.lon], r.zoom);
+    selectedIcao = null;
+    clearRoute();
     fetchFlights();
   });
 });
