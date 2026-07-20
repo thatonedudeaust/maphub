@@ -87,7 +87,7 @@ body{
 /* ---------- Sheets index ---------- */
 .sheets{
   max-width:960px;margin:0 auto;padding:10px 24px 40px;
-  display:grid;grid-template-columns:repeat(3,1fr);gap:26px;
+  display:grid;grid-template-columns:repeat(2,1fr);gap:26px;
 }
 .sheet{
   position:relative;
@@ -209,6 +209,21 @@ body{
     </svg>
     <h2>MapHub Flights</h2>
     <p class="desc">Live aircraft tracking, right off the ADS-B feed.</p>
+    <span class="open">Open sheet
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+  </a>
+
+  <a class="sheet" href="maphub-tides">
+    <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+    <div class="sheet-label"><span>Sheet 04</span><span>NOAA &middot; NDBC</span></div>
+    <svg class="sheet-motif" viewBox="0 0 300 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0 40 Q 25 20 50 40 T 100 40 T 150 40 T 200 40 T 250 40 T 300 40" stroke="#22291f" stroke-width="1.4" opacity="0.4"/>
+      <path d="M0 28 Q 25 8 50 28 T 100 28 T 150 28 T 200 28 T 250 28 T 300 28" stroke="#22291f" stroke-width="1" opacity="0.25"/>
+      <circle cx="220" cy="32" r="4" fill="#c9903f"/>
+    </svg>
+    <h2>MapHub Tides</h2>
+    <p class="desc">Tide predictions and marine conditions for the South Jersey shore.</p>
     <span class="open">Open sheet
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </span>
