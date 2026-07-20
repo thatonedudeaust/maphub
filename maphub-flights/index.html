@@ -162,6 +162,7 @@ main{flex:1;display:flex;min-height:0;}
     <div id="flight-list"></div>
     <div id="board-status"><span><span class="dot"></span><span id="status-text">Connecting&hellip;</span></span><span id="last-update"></span></div>
     <div id="debug-line" style="padding:6px 14px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);line-height:1.5;word-break:break-word;"></div>
+    <div id="route-debug" style="padding:6px 14px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);line-height:1.5;word-break:break-word;border-top:1px solid var(--rule-dim);"></div>
   </div>
   <div id="map-wrap">
     <div id="map"></div>
@@ -224,31 +225,40 @@ function drawRoute(f, route){
 
 async function fetchRouteForFlight(f){
   clearRoute();
-  if (!f.callsign) return;
+  if (!f.callsign) {
+    document.getElementById('route-debug').textContent = 'No callsign reported for this aircraft \u2014 cannot look up a route.';
+    return;
+  }
+  document.getElementById('route-debug').textContent = `Looking up route for ${f.callsign}\u2026`;
   const body = JSON.stringify({ planes:[{ callsign:f.callsign, lat:f.lat, lng:f.lon }] });
   const attempts = [
-    'https://api.adsb.lol/api/0/routeset',
-    proxied('https://api.adsb.lol/api/0/routeset', 'corsproxy'),
-    proxied('https://api.adsb.lol/api/0/routeset', 'allorigins')
+    { name:'direct', url:'https://api.adsb.lol/api/0/routeset' },
+    { name:'corsproxy', url:proxied('https://api.adsb.lol/api/0/routeset', 'corsproxy') },
+    { name:'allorigins', url:proxied('https://api.adsb.lol/api/0/routeset', 'allorigins') }
   ];
-  for (const url of attempts) {
+  const errors = [];
+  for (const attempt of attempts) {
     try {
-      const res = await fetch(url, {
+      const res = await fetch(attempt.url, {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
         body
       });
-      if (!res.ok) continue;
+      if (!res.ok) { errors.push(`${attempt.name}: HTTP ${res.status}`); continue; }
       const data = await res.json();
-      if (!Array.isArray(data) || data.length === 0) continue;
+      if (!Array.isArray(data) || data.length === 0) { errors.push(`${attempt.name}: empty response`); continue; }
       const route = data[0];
-      if (!route || !route.plausible) continue;
+      if (!route || !route._airports || route._airports.length < 2) { errors.push(`${attempt.name}: no route match for ${f.callsign}`); continue; }
       drawRoute(f, route);
+      document.getElementById('route-debug').textContent = `Route found via ${attempt.name}: ${route.airport_codes || ''}`;
       return;
     } catch (err) {
+      errors.push(`${attempt.name}: ${err.message}`);
       continue;
     }
   }
+  document.getElementById('route-debug').textContent = errors.join('  |  ');
+  console.error('Route lookup failed:', errors);
 }
   const rotation = track || 0;
   const cls = (selected ? 'plane-icon selected' : ground ? 'plane-icon ground' : 'plane-icon');
