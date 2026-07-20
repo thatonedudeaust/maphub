@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MapHub Tides</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --navy-deep:#081724;
+  --panel:#0d2030;
+  --panel-raised:#122a3d;
+  --rule:#1f4256;
+  --rule-dim:#152f40;
+  --parchment:#e9e0c6;
+  --parchment-dim:#d9cea9;
+  --ink:#0d2436;
+  --ink-muted:#4d5f5c;
+  --brass:#b98a44;
+  --brass-bright:#d9a85e;
+  --teal:#3f8f88;
+  --coral:#c1583f;
+  --text-primary:#dce7e4;
+  --text-muted:#7f9490;
+  --text-faint:#3f5652;
+  --font-display:'Fraunces', serif;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--navy-deep);color:var(--text-primary);font-family:var(--font-sans);}
+body{display:flex;flex-direction:column;overflow:hidden;}
+
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;background:var(--panel);border-bottom:2px solid var(--rule);
+  flex-shrink:0;gap:14px;flex-wrap:wrap;
+}
+.brand h1{font-family:var(--font-display);font-weight:600;font-size:19px;margin:0;color:var(--brass-bright);letter-spacing:0.5px;}
+.brand .sub{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1.5px;margin-top:2px;text-transform:uppercase;}
+.back-link{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--text-muted);text-decoration:none;border:1px solid var(--rule);border-radius:3px;padding:8px 12px;white-space:nowrap;
+}
+.back-link:hover{color:var(--brass-bright);border-color:var(--brass);}
+.back-link:focus-visible{outline:2px solid var(--brass-bright);outline-offset:2px;}
+.clock{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);letter-spacing:1px;white-space:nowrap;}
+
+main{flex:1;display:flex;min-height:0;}
+#panel{
+  width:340px;flex-shrink:0;background:var(--panel);border-right:2px solid var(--rule);
+  display:flex;flex-direction:column;min-height:0;overflow-y:auto;
+}
+.panel-section{border-bottom:1px solid var(--rule-dim);padding:14px;}
+.eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--brass);text-transform:uppercase;margin-bottom:8px;}
+
+.station-list{display:flex;flex-direction:column;gap:6px;}
+.station-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:3px;
+  background:var(--panel-raised);cursor:pointer;border:1px solid transparent;
+}
+.station-item:hover{border-color:var(--rule);}
+.station-item.selected{border-color:var(--brass);background:#16324a;}
+.station-badge{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  background:var(--teal);color:#03110f;
+}
+.station-item.buoy .station-badge{background:var(--brass);}
+.station-name{font-family:var(--font-sans);font-size:13px;color:var(--text-primary);}
+.station-sub{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);letter-spacing:0.5px;text-transform:uppercase;}
+
+/* ---------- Detail panel ---------- */
+#detail{flex:1;padding:16px 14px 24px;}
+#detail-empty{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);line-height:1.6;}
+.detail-title{font-family:var(--font-display);font-weight:600;font-size:20px;color:var(--text-primary);margin:0 0 2px;}
+.detail-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;}
+
+/* Tide gauge dial */
+.gauge-wrap{display:flex;justify-content:center;margin:6px 0 12px;}
+.gauge-readout{text-align:center;margin-bottom:14px;}
+.gauge-readout .height{font-family:var(--font-display);font-size:30px;color:var(--brass-bright);font-weight:600;}
+.gauge-readout .trend{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--teal);margin-top:2px;}
+.gauge-readout .trend.falling{color:var(--coral);}
+
+.tide-rows{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.tide-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 12px;background:var(--panel-raised);border-radius:3px;
+  border-left:3px solid var(--teal);
+}
+.tide-row.low{border-left-color:var(--coral);}
+.tide-row .type{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);}
+.tide-row .time{font-family:var(--font-mono);font-size:13px;color:var(--text-primary);margin-top:2px;}
+.tide-row .val{font-family:var(--font-display);font-size:16px;color:var(--brass-bright);}
+
+/* Buoy card */
+.buoy-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.buoy-stat{background:var(--panel-raised);border-radius:3px;padding:10px 12px;}
+.buoy-stat .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:1.5px;color:var(--text-faint);text-transform:uppercase;}
+.buoy-stat .v{font-family:var(--font-display);font-size:19px;color:var(--brass-bright);margin-top:2px;}
+
+.loading{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);}
+.err-line{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);margin-top:10px;line-height:1.5;word-break:break-word;}
+
+#map-wrap{flex:1;position:relative;min-height:0;}
+#map{width:100%;height:100%;}
+.leaflet-popup-content-wrapper{background:var(--parchment);color:var(--ink);border-radius:2px;font-family:var(--font-mono);}
+.leaflet-popup-tip{background:var(--parchment);}
+.popup-title{font-weight:600;font-size:13px;margin-bottom:2px;}
+.popup-line{font-size:11px;color:var(--ink-muted);margin-top:2px;}
+
+.station-marker{
+  width:16px;height:16px;border-radius:50%;background:var(--teal);
+  border:2px solid #03110f;box-shadow:0 0 0 2px rgba(63,143,136,0.35);
+}
+.station-marker.buoy{background:var(--brass);box-shadow:0 0 0 2px rgba(185,138,68,0.35);border-radius:3px;transform:rotate(45deg);}
+.station-marker.selected{background:var(--brass-bright);box-shadow:0 0 0 3px rgba(217,168,94,0.55);}
+
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px;}
+
+@media (max-width:760px){
+  main{flex-direction:column;}
+  #panel{width:100%;height:48%;border-right:none;border-bottom:2px solid var(--rule);}
+  #map-wrap{height:52%;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>MapHub Tides</h1>
+    <div class="sub">South Jersey Shore &amp; Delaware Bay &middot; NOAA CO-OPS / NDBC</div>
+  </div>
+  <a href="https://thatonedudeaust.github.io/maphub" class="back-link">&larr; Back to MapHub</a>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<main>
+  <div id="panel">
+    <div class="panel-section">
+      <div class="eyebrow">Stations</div>
+      <div class="station-list" id="station-list"></div>
+    </div>
+    <div id="detail">
+      <div id="detail-empty">Select a tide station or buoy on the map (or from the list above) to see current conditions.</div>
+    </div>
+  </div>
+  <div id="map-wrap">
+    <div id="map"></div>
+  </div>
+</main>
+
+<script>
+function tickClock(){document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});}
+tickClock();
+setInterval(tickClock, 1000);
+
+const STATIONS = [
+  { id:'8531680', name:'Sandy Hook, NJ', lat:40.4667, lon:-74.0083, type:'tide' },
+  { id:'8534720', name:'Atlantic City, NJ', lat:39.3567, lon:-74.4181, type:'tide' },
+  { id:'8536110', name:'Cape May, NJ', lat:38.9666, lon:-74.9599, type:'tide' },
+  { id:'8537121', name:'Ship John Shoal, NJ', lat:39.3075, lon:-75.3765, type:'tide' },
+  { id:'8557380', name:'Lewes, DE', lat:38.7828, lon:-75.1193, type:'tide' },
+  { id:'44009', name:'Delaware Bay Entrance Buoy', lat:38.460, lon:-74.692, type:'buoy' }
+];
+
+let selectedId = null;
+
+const map = L.map('map', {zoomControl:true}).setView([39.3, -74.85], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+let markers = {};
+function buildMarkerIcon(station, selected){
+  const cls = 'station-marker' + (station.type === 'buoy' ? ' buoy' : '') + (selected ? ' selected' : '');
+  return L.divIcon({ className:'', html:`<div class="${cls}"></div>`, iconSize:[16,16], iconAnchor:[8,8] });
+}
+
+STATIONS.forEach(st => {
+  const m = L.marker([st.lat, st.lon], { icon: buildMarkerIcon(st, false) }).addTo(map);
+  m.bindPopup(`<div class="popup-title">${st.name}</div><div class="popup-line">${st.type === 'buoy' ? 'NDBC Buoy' : 'NOAA Tide Station'} #${st.id}</div>`);
+  m.on('click', () => selectStation(st.id));
+  markers[st.id] = m;
+});
+
+function renderStationList(){
+  const list = document.getElementById('station-list');
+  list.innerHTML = '';
+  STATIONS.forEach(st => {
+    const row = document.createElement('div');
+    row.className = 'station-item' + (st.type === 'buoy' ? ' buoy' : '') + (st.id === selectedId ? ' selected' : '');
+    row.innerHTML = `
+      <div class="station-badge">${st.type === 'buoy' ? '&#9670;' : '&#8776;'}</div>
+      <div>
+        <div class="station-name">${st.name}</div>
+        <div class="station-sub">${st.type === 'buoy' ? 'Marine buoy' : 'Tide station'} &middot; #${st.id}</div>
+      </div>
+    `;
+    row.addEventListener('click', () => selectStation(st.id));
+    list.appendChild(row);
+  });
+}
+renderStationList();
+
+function selectStation(id){
+  selectedId = id;
+  renderStationList();
+  Object.entries(markers).forEach(([sid, m]) => {
+    const st = STATIONS.find(s => s.id === sid);
+    m.setIcon(buildMarkerIcon(st, sid === id));
+  });
+  const station = STATIONS.find(s => s.id === id);
+  map.flyTo([station.lat, station.lon], Math.max(map.getZoom(), 9), {duration:0.5});
+  markers[id].openPopup();
+  if (station.type === 'buoy') loadBuoy(station);
+  else loadTideStation(station);
+}
+
+function proxied(url, via){
+  if (via === 'allorigins') return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  if (via === 'corsproxy') return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function noaaDate(d){ return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`; }
+
+async function fetchJsonWithFallback(targetUrl){
+  const attempts = [targetUrl, proxied(targetUrl,'allorigins'), proxied(targetUrl,'corsproxy')];
+  const errors = [];
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) { errors.push(`HTTP ${res.status}`); continue; }
+      const data = await res.json();
+      return { data, errors };
+    } catch (err) {
+      errors.push(err.message);
+      continue;
+    }
+  }
+  return { data:null, errors };
+}
+
+async function fetchTextWithFallback(targetUrl){
+  const attempts = [proxied(targetUrl,'allorigins'), proxied(targetUrl,'corsproxy'), targetUrl];
+  const errors = [];
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) { errors.push(`HTTP ${res.status}`); continue; }
+      const text = await res.text();
+      return { text, errors };
+    } catch (err) {
+      errors.push(err.message);
+      continue;
+    }
+  }
+  return { text:null, errors };
+}
+
+function renderGaugeSvg(fractionAngleDeg, rising){
+  const needleColor = rising ? '#3f8f88' : '#c1583f';
+  return `
+  <svg width="180" height="110" viewBox="0 0 180 110">
+    <path d="M 15 100 A 75 75 0 0 1 165 100" fill="none" stroke="#1f4256" stroke-width="10"/>
+    <text x="15" y="95" font-family="IBM Plex Mono" font-size="9" fill="#7f9490">LOW</text>
+    <text x="140" y="95" font-family="IBM Plex Mono" font-size="9" fill="#7f9490">HIGH</text>
+    <g transform="translate(90,100) rotate(${fractionAngleDeg})">
+      <line x1="0" y1="0" x2="0" y2="-68" stroke="${needleColor}" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="6" fill="${needleColor}"/>
+    </g>
+  </svg>`;
+}
+
+async function loadTideStation(station){
+  const detail = document.getElementById('detail');
+  detail.innerHTML = `<div class="detail-title">${station.name}</div><div class="detail-sub">NOAA Station #${station.id}</div><div class="loading">Loading tide data&hellip;</div>`;
+
+  const now = new Date();
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
+
+  const predUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${noaaDate(yesterday)}&end_date=${noaaDate(tomorrow)}&station=${station.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=MapHubTides&format=json`;
+  const levelUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station=${station.id}&product=water_level&datum=MLLW&time_zone=lst_ldt&units=english&application=MapHubTides&format=json`;
+
+  const [predResult, levelResult] = await Promise.all([
+    fetchJsonWithFallback(predUrl),
+    fetchJsonWithFallback(levelUrl)
+  ]);
+
+  const allErrors = [...predResult.errors, ...levelResult.errors];
+
+  if (!predResult.data || !predResult.data.predictions || predResult.data.predictions.length === 0) {
+    detail.innerHTML = `<div class="detail-title">${station.name}</div><div class="detail-sub">NOAA Station #${station.id}</div><div class="loading">Could not load tide predictions for this station.</div><div class="err-line">${allErrors.join(' | ')}</div>`;
+    return;
+  }
+
+  const predictions = predResult.data.predictions.map(p => ({ t:new Date(p.t.replace(' ','T')), v:parseFloat(p.v), type:p.type }));
+  let prev = null, next = null;
+  for (let i=0;i<predictions.length-1;i++){
+    if (predictions[i].t <= now && predictions[i+1].t >= now) { prev = predictions[i]; next = predictions[i+1]; break; }
+  }
+  if (!prev) { prev = predictions[0]; next = predictions[1] || predictions[0]; }
+
+  const rising = prev.type === 'L';
+  const spanMs = next.t - prev.t || 1;
+  const frac = Math.min(1, Math.max(0, (now - prev.t) / spanMs));
+  const angleDeg = rising ? (-90 + frac*180) : (90 - frac*180);
+
+  let currentHeight = null, currentTime = null;
+  if (levelResult.data && levelResult.data.data && levelResult.data.data.length > 0) {
+    const latest = levelResult.data.data[levelResult.data.data.length - 1];
+    currentHeight = parseFloat(latest.v);
+    currentTime = latest.t;
+  }
+
+  const upcoming = predictions.filter(p => p.t >= now).slice(0,4);
+
+  detail.innerHTML = `
+    <div class="detail-title">${station.name}</div>
+    <div class="detail-sub">NOAA Station #${station.id}</div>
+    <div class="gauge-wrap">${renderGaugeSvg(angleDeg, rising)}</div>
+    <div class="gauge-readout">
+      <div class="height">${currentHeight != null ? currentHeight.toFixed(2) + ' ft' : 'N/A'}</div>
+      <div class="trend ${rising ? '' : 'falling'}">${rising ? '\u2191 Rising' : '\u2193 Falling'} &middot; MLLW</div>
+    </div>
+    <div class="eyebrow">Upcoming tides</div>
+    <div class="tide-rows">
+      ${upcoming.map(p => `
+        <div class="tide-row ${p.type === 'L' ? 'low' : ''}">
+          <div>
+            <div class="type">${p.type === 'H' ? 'High tide' : 'Low tide'}</div>
+            <div class="time">${p.t.toLocaleString('en-US',{weekday:'short', hour:'numeric', minute:'2-digit'})}</div>
+          </div>
+          <div class="val">${p.v.toFixed(1)} ft</div>
+        </div>
+      `).join('')}
+    </div>
+    ${allErrors.length ? `<div class="err-line">Fallback notes: ${allErrors.join(' | ')}</div>` : ''}
+  `;
+}
+
+function parseNdbcRealtime(text){
+  const lines = text.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  if (lines.length === 0) return null;
+  const cols = lines[0].trim().split(/\s+/);
+  // YY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS PTDY TIDE
+  const keys = ['YY','MM','DD','hh','mm','WDIR','WSPD','GST','WVHT','DPD','APD','MWD','PRES','ATMP','WTMP','DEWP','VIS','PTDY','TIDE'];
+  const obj = {};
+  keys.forEach((k,i) => { obj[k] = cols[i] !== undefined ? cols[i] : 'MM'; });
+  return obj;
+}
+
+function ndbcVal(v, unitConvert){
+  if (v === undefined || v === 'MM' || v === null) return null;
+  const n = parseFloat(v);
+  if (isNaN(n)) return null;
+  return unitConvert ? unitConvert(n) : n;
+}
+
+async function loadBuoy(station){
+  const detail = document.getElementById('detail');
+  detail.innerHTML = `<div class="detail-title">${station.name}</div><div class="detail-sub">NDBC Buoy #${station.id}</div><div class="loading">Loading buoy observations&hellip;</div>`;
+
+  const url = `https://www.ndbc.noaa.gov/data/realtime2/${station.id}.txt`;
+  const { text, errors } = await fetchTextWithFallback(url);
+
+  if (!text) {
+    detail.innerHTML = `<div class="detail-title">${station.name}</div><div class="detail-sub">NDBC Buoy #${station.id}</div><div class="loading">Could not load buoy data.</div><div class="err-line">${errors.join(' | ')}</div>`;
+    return;
+  }
+
+  const obs = parseNdbcRealtime(text);
+  if (!obs) {
+    detail.innerHTML = `<div class="detail-title">${station.name}</div><div class="detail-sub">NDBC Buoy #${station.id}</div><div class="loading">No recent observations available.</div>`;
+    return;
+  }
+
+  const windKts = ndbcVal(obs.WSPD, v => Math.round(v * 1.94384));
+  const gustKts = ndbcVal(obs.GST, v => Math.round(v * 1.94384));
+  const waveFt = ndbcVal(obs.WVHT, v => (v * 3.28084).toFixed(1));
+  const wtempF = ndbcVal(obs.WTMP, v => Math.round(v * 9/5 + 32));
+  const atempF = ndbcVal(obs.ATMP, v => Math.round(v * 9/5 + 32));
+  const pres = ndbcVal(obs.PRES, v => v.toFixed(1));
+
+  const obsTime = (obs.YY && obs.MM && obs.DD) ? `${obs.MM}/${obs.DD} ${obs.hh}:${obs.mm} UTC` : 'Unknown time';
+
+  detail.innerHTML = `
+    <div class="detail-title">${station.name}</div>
+    <div class="detail-sub">NDBC Buoy #${station.id} &middot; ${obsTime}</div>
+    <div class="buoy-grid">
+      <div class="buoy-stat"><div class="k">Wind</div><div class="v">${windKts != null ? windKts + ' kt' : 'N/A'}</div></div>
+      <div class="buoy-stat"><div class="k">Gust</div><div class="v">${gustKts != null ? gustKts + ' kt' : 'N/A'}</div></div>
+      <div class="buoy-stat"><div class="k">Wave height</div><div class="v">${waveFt != null ? waveFt + ' ft' : 'N/A'}</div></div>
+      <div class="buoy-stat"><div class="k">Water temp</div><div class="v">${wtempF != null ? wtempF + '\u00b0F' : 'N/A'}</div></div>
+      <div class="buoy-stat"><div class="k">Air temp</div><div class="v">${atempF != null ? atempF + '\u00b0F' : 'N/A'}</div></div>
+      <div class="buoy-stat"><div class="k">Pressure</div><div class="v">${pres != null ? pres + ' hPa' : 'N/A'}</div></div>
+    </div>
+    ${errors.length ? `<div class="err-line">Fallback notes: ${errors.join(' | ')}</div>` : ''}
+  `;
+}
+</script>
+</body>
+</html>
