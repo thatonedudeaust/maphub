@@ -161,6 +161,7 @@ main{flex:1;display:flex;min-height:0;}
     <input type="text" id="search-box" placeholder="Search callsign&hellip;">
     <div id="flight-list"></div>
     <div id="board-status"><span><span class="dot"></span><span id="status-text">Connecting&hellip;</span></span><span id="last-update"></span></div>
+    <div id="debug-line" style="padding:6px 14px;font-family:var(--font-mono);font-size:9px;color:var(--text-faint);line-height:1.5;word-break:break-word;"></div>
   </div>
   <div id="map-wrap">
     <div id="map"></div>
@@ -267,12 +268,12 @@ async function fetchFlights(){
   const statusText = document.getElementById('status-text');
   const r = REGIONS[currentRegion];
   const providers = buildProviders(r);
-  let lastError = null;
+  const errors = [];
 
   for (const provider of providers) {
     try {
       const res = await fetch(provider.url);
-      if (!res.ok) { lastError = `${provider.name}: HTTP ${res.status}`; continue; }
+      if (!res.ok) { errors.push(`${provider.name}: HTTP ${res.status}`); continue; }
       const data = await res.json();
       const flights = provider.parse(data);
 
@@ -281,17 +282,21 @@ async function fetchFlights(){
       renderList();
       statusEl.classList.remove('stale');
       statusText.textContent = `Live (${provider.name})`;
+      statusText.title = '';
+      document.getElementById('debug-line').textContent = '';
       document.getElementById('last-update').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour12:false});
       return;
     } catch (err) {
-      lastError = `${provider.name}: ${err.message}`;
+      errors.push(`${provider.name}: ${err.message}`);
       continue;
     }
   }
 
   statusEl.classList.add('stale');
-  statusText.textContent = 'Scope offline (all feeds unreachable)';
-  console.error('All ADS-B providers failed. Last error:', lastError);
+  statusText.textContent = `Offline: ${errors[errors.length-1] || 'unknown error'}`;
+  statusText.title = errors.join(' | ');
+  document.getElementById('debug-line').textContent = errors.join('  |  ');
+  console.error('All ADS-B providers failed:', errors);
 }
 
 function renderMap(flights){
