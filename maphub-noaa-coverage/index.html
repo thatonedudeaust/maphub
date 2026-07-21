@@ -1,1 +1,343 @@
-Hello world!
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MapHub NOAA Coverage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --case:#1b1815;
+  --panel:#221e18;
+  --panel-raised:#2c261e;
+  --rule:#493f30;
+  --rule-dim:#332c22;
+  --amber:#ffb238;
+  --text-primary:#ece6d6;
+  --text-muted:#a39c88;
+  --text-faint:#6b6555;
+  --font-vfd:'VT323', monospace;
+  --font-mono:'IBM Plex Mono', monospace;
+  --font-sans:'IBM Plex Sans', sans-serif;
+
+  --ch1:#e64c4c; --ch2:#e67e22; --ch3:#e6c92e; --ch4:#4ddb85;
+  --ch5:#3fb0d8; --ch6:#7a7ce6; --ch7:#d05fc9;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--case);color:var(--text-primary);font-family:var(--font-sans);}
+body{display:flex;flex-direction:column;overflow:hidden;}
+
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;background:var(--panel);border-bottom:2px solid var(--rule);
+  flex-shrink:0;gap:14px;flex-wrap:wrap;
+}
+.brand h1{font-family:var(--font-mono);font-size:16px;letter-spacing:2px;margin:0;color:var(--text-primary);text-transform:uppercase;}
+.brand .sub{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:1px;margin-top:2px;}
+.back-link{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--text-muted);text-decoration:none;border:1px solid var(--rule);border-radius:3px;padding:8px 12px;white-space:nowrap;
+}
+.back-link:hover{color:var(--amber);border-color:var(--amber);}
+.back-link:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+.clock{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);letter-spacing:1px;white-space:nowrap;}
+
+main{flex:1;display:flex;min-height:0;}
+#panel{
+  width:340px;flex-shrink:0;background:var(--panel);border-right:2px solid var(--rule);
+  display:flex;flex-direction:column;min-height:0;
+}
+.panel-section{padding:12px 14px;border-bottom:1px solid var(--rule-dim);}
+.eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:8px;}
+
+.channel-legend{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.ch-chip{
+  display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;
+  color:var(--text-muted);padding:4px 6px;border-radius:2px;cursor:pointer;border:1px solid transparent;
+}
+.ch-chip.off{opacity:0.35;}
+.ch-chip:hover{border-color:var(--rule);}
+.ch-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+#search-box{
+  margin:0;padding:8px 10px;background:var(--panel-raised);border:1px solid var(--rule);
+  border-radius:2px;color:var(--text-primary);font-family:var(--font-mono);font-size:12px;width:100%;
+}
+#search-box::placeholder{color:var(--text-faint);}
+#search-box:focus-visible{outline:2px solid var(--amber);}
+
+#station-count{font-family:var(--font-vfd);font-size:26px;color:var(--amber);text-shadow:0 0 6px rgba(255,178,56,0.4);}
+#station-count span{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-left:8px;text-shadow:none;}
+
+#station-list{flex:1;overflow-y:auto;padding:2px 0 12px;}
+.station-row{
+  display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--rule-dim);cursor:pointer;
+}
+.station-row:hover{background:var(--panel-raised);}
+.station-row.selected{background:var(--panel-raised);border-left:3px solid var(--amber);padding-left:11px;}
+.ch-marker{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,0.4);}
+.station-name{font-family:var(--font-sans);font-size:13px;color:var(--text-primary);}
+.station-sub{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);letter-spacing:0.5px;}
+
+#map-wrap{flex:1;position:relative;min-height:0;}
+#map{width:100%;height:100%;}
+.leaflet-popup-content-wrapper{background:var(--panel-raised);color:var(--text-primary);border:1px solid var(--rule);border-radius:2px;font-family:var(--font-mono);}
+.leaflet-popup-tip{background:var(--panel-raised);}
+.popup-title{font-weight:600;font-size:13px;color:var(--amber);margin-bottom:4px;}
+.popup-line{font-size:11px;color:var(--text-muted);margin-top:2px;}
+
+.note-line{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);line-height:1.5;padding:10px 14px;border-top:1px solid var(--rule-dim);}
+
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px;}
+
+@media (max-width:760px){
+  main{flex-direction:column;}
+  #panel{width:100%;height:48%;border-right:none;border-bottom:2px solid var(--rule);}
+  #map-wrap{height:52%;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>MapHub NOAA Coverage</h1>
+    <div class="sub">NOAA Weather Radio All Hazards &middot; Major-market transmitters, nationwide</div>
+  </div>
+  <a href="https://thatonedudeaust.github.io/maphub" class="back-link">&larr; Back to MapHub</a>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<main>
+  <div id="panel">
+    <div class="panel-section">
+      <div class="eyebrow">Channels (tap to toggle)</div>
+      <div class="channel-legend" id="channel-legend"></div>
+    </div>
+    <div class="panel-section">
+      <div id="station-count">&mdash;<span>stations shown</span></div>
+      <input type="text" id="search-box" placeholder="Search city, callsign, state&hellip;" style="margin-top:8px;">
+    </div>
+    <div id="station-list"></div>
+    <div class="note-line">Curated major-market subset (~70 of ~1000+ NWR transmitters nationwide), sourced from a long-standing third-party NWR directory. Coverage rings are the NWS's typical ~40 mile full-power range over level terrain &mdash; actual reception varies with terrain and receiver. Some listings may have changed since compilation.</div>
+  </div>
+  <div id="map-wrap">
+    <div id="map"></div>
+  </div>
+</main>
+
+<script>
+function tickClock(){document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});}
+tickClock();
+setInterval(tickClock, 1000);
+
+const CHANNELS = {
+  '162.400':{ ch:'WX1', hex:'#e64c4c' },
+  '162.425':{ ch:'WX2', hex:'#e67e22' },
+  '162.450':{ ch:'WX3', hex:'#e6c92e' },
+  '162.475':{ ch:'WX4', hex:'#4ddb85' },
+  '162.500':{ ch:'WX5', hex:'#3fb0d8' },
+  '162.525':{ ch:'WX6', hex:'#7a7ce6' },
+  '162.550':{ ch:'WX7', hex:'#d05fc9' }
+};
+
+const STATIONS = [
+  {city:'Birmingham', state:'AL', call:'KIH-54', freq:'162.550', power:1000, wfo:'Birmingham, AL', lat:33.5186, lon:-86.8104},
+  {city:'Anchorage', state:'AK', call:'KEC-43', freq:'162.550', power:125, wfo:'Anchorage, AK', lat:61.2181, lon:-149.9003},
+  {city:'Phoenix', state:'AZ', call:'KEC-94', freq:'162.550', power:300, wfo:'Phoenix, AZ', lat:33.4484, lon:-112.0740},
+  {city:'Little Rock', state:'AR', call:'WXJ-55', freq:'162.550', power:1000, wfo:'Little Rock, AR', lat:34.7465, lon:-92.2896},
+  {city:'Los Angeles', state:'CA', call:'KWO-37', freq:'162.550', power:330, wfo:'Oxnard, CA', lat:34.0522, lon:-118.2437},
+  {city:'San Francisco', state:'CA', call:'KHB-49', freq:'162.400', power:330, wfo:'Monterey, CA', lat:37.7749, lon:-122.4194},
+  {city:'Sacramento', state:'CA', call:'KEC-57', freq:'162.550', power:330, wfo:'Sacramento, CA', lat:38.5816, lon:-121.4944},
+  {city:'San Diego', state:'CA', call:'KEC-62', freq:'162.400', power:100, wfo:'San Diego, CA', lat:32.7157, lon:-117.1611},
+  {city:'Denver', state:'CO', call:'KEC-76', freq:'162.550', power:330, wfo:'Boulder, CO', lat:39.7392, lon:-104.9903},
+  {city:'Hartford', state:'CT', call:'WXJ-41', freq:'162.475', power:300, wfo:'Boston, MA', lat:41.7658, lon:-72.6734},
+  {city:'Georgetown', state:'DE', call:'WXJ-94', freq:'162.550', power:500, wfo:'Philadelphia, PA', lat:38.6901, lon:-75.3852},
+  {city:'Miami', state:'FL', call:'KHB-34', freq:'162.550', power:1000, wfo:'Miami, FL', lat:25.7617, lon:-80.1918},
+  {city:'Orlando', state:'FL', call:'KIH-63', freq:'162.475', power:1000, wfo:'Melbourne, FL', lat:28.5383, lon:-81.3792},
+  {city:'Tampa', state:'FL', call:'KHB-32', freq:'162.550', power:1000, wfo:'Ruskin, FL', lat:27.9506, lon:-82.4572},
+  {city:'Jacksonville', state:'FL', call:'KHB-39', freq:'162.550', power:1000, wfo:'Jacksonville, FL', lat:30.3322, lon:-81.6557},
+  {city:'Atlanta', state:'GA', call:'KEC-80', freq:'162.550', power:500, wfo:'Peachtree City, GA', lat:33.7490, lon:-84.3880},
+  {city:'Honolulu (Wahiawa)', state:'HI', call:'KBA-99', freq:'162.550', power:1000, wfo:'Honolulu, HI', lat:21.5028, lon:-158.0236},
+  {city:'Boise', state:'ID', call:'WXK-68', freq:'162.550', power:100, wfo:'Boise, ID', lat:43.6150, lon:-116.2023},
+  {city:'Chicago', state:'IL', call:'KZZ-81', freq:'162.425', power:1000, wfo:'Chicago, IL', lat:41.8781, lon:-87.6298},
+  {city:'Indianapolis', state:'IN', call:'KEC-74', freq:'162.550', power:1000, wfo:'Indianapolis, IN', lat:39.7684, lon:-86.1581},
+  {city:'Des Moines', state:'IA', call:'WXL-57', freq:'162.550', power:1000, wfo:'Des Moines, IA', lat:41.5868, lon:-93.6250},
+  {city:'Wichita', state:'KS', call:'KEC-59', freq:'162.550', power:1000, wfo:'Wichita, KS', lat:37.6872, lon:-97.3301},
+  {city:'Louisville', state:'KY', call:'KIH-43', freq:'162.475', power:1000, wfo:'Louisville, KY', lat:38.2527, lon:-85.7585},
+  {city:'Lexington', state:'KY', call:'KIH-41', freq:'162.400', power:1000, wfo:'Louisville, KY', lat:38.0406, lon:-84.5037},
+  {city:'New Orleans', state:'LA', call:'KHB-43', freq:'162.550', power:1000, wfo:'Slidell, LA', lat:29.9511, lon:-90.0715},
+  {city:'Portland', state:'ME', call:'KDO-95', freq:'162.550', power:500, wfo:'Portland, ME', lat:43.6591, lon:-70.2568},
+  {city:'Baltimore', state:'MD', call:'KEC-83', freq:'162.400', power:1000, wfo:'Sterling, VA', lat:39.2904, lon:-76.6122},
+  {city:'Boston', state:'MA', call:'KHB-35', freq:'162.475', power:500, wfo:'Boston, MA', lat:42.3601, lon:-71.0589},
+  {city:'Detroit', state:'MI', call:'KEC-63', freq:'162.550', power:330, wfo:'Detroit, MI', lat:42.3314, lon:-83.0458},
+  {city:'Minneapolis', state:'MN', call:'KEC-65', freq:'162.550', power:1000, wfo:'Chanhassen, MN', lat:44.9778, lon:-93.2650},
+  {city:'Jackson', state:'MS', call:'KIH-38', freq:'162.400', power:800, wfo:'Jackson, MS', lat:32.2988, lon:-90.1848},
+  {city:'Kansas City', state:'MO', call:'KID-77', freq:'162.550', power:1000, wfo:'Pleasant Hill, MO', lat:39.0997, lon:-94.5786},
+  {city:'St. Louis', state:'MO', call:'KDO-89', freq:'162.550', power:1000, wfo:'St. Louis, MO', lat:38.6270, lon:-90.1994},
+  {city:'Billings', state:'MT', call:'WXL-27', freq:'162.550', power:300, wfo:'Billings, MT', lat:45.7833, lon:-108.5007},
+  {city:'Omaha', state:'NE', call:'KIH-61', freq:'162.400', power:1000, wfo:'Valley, NE', lat:41.2565, lon:-95.9345},
+  {city:'Las Vegas', state:'NV', call:'WXL-36', freq:'162.550', power:100, wfo:'Las Vegas, NV', lat:36.1699, lon:-115.1398},
+  {city:'Reno', state:'NV', call:'WXK-58', freq:'162.550', power:100, wfo:'Reno, NV', lat:39.5296, lon:-119.8138},
+  {city:'Concord', state:'NH', call:'WXJ-40', freq:'162.400', power:330, wfo:'Portland, ME', lat:43.2081, lon:-71.5376},
+  {city:'Atlantic City', state:'NJ', call:'KHB-38', freq:'162.400', power:1000, wfo:'Philadelphia, PA', lat:39.3643, lon:-74.4229},
+  {city:'Philadelphia (covers South NJ)', state:'PA', call:'KIH-28', freq:'162.475', power:1000, wfo:'Philadelphia, PA', lat:39.9526, lon:-75.1652},
+  {city:'Albuquerque', state:'NM', call:'WXJ-34', freq:'162.400', power:100, wfo:'Albuquerque, NM', lat:35.0844, lon:-106.6504},
+  {city:'New York City', state:'NY', call:'KWO-35', freq:'162.550', power:500, wfo:'New York City, NY', lat:40.7128, lon:-74.0060},
+  {city:'Buffalo', state:'NY', call:'KEB-98', freq:'162.550', power:330, wfo:'Buffalo, NY', lat:42.8864, lon:-78.8784},
+  {city:'Charlotte', state:'NC', call:'WXL-70', freq:'162.475', power:200, wfo:'Greer, SC', lat:35.2271, lon:-80.8431},
+  {city:'Raleigh', state:'NC', call:'KXI-72', freq:'162.450', power:110, wfo:'Raleigh, NC', lat:35.7796, lon:-78.6382},
+  {city:'Bismarck', state:'ND', call:'WXL-78', freq:'162.475', power:1000, wfo:'Bismarck, ND', lat:46.8083, lon:-100.7837},
+  {city:'Columbus', state:'OH', call:'KIG-86', freq:'162.550', power:1000, wfo:'Wilmington, OH', lat:39.9612, lon:-82.9988},
+  {city:'Cleveland', state:'OH', call:'KHB-59', freq:'162.550', power:500, wfo:'Cleveland, OH', lat:41.4993, lon:-81.6944},
+  {city:'Oklahoma City', state:'OK', call:'WXK-85', freq:'162.400', power:1000, wfo:'Norman, OK', lat:35.4676, lon:-97.5164},
+  {city:'Portland', state:'OR', call:'KIG-98', freq:'162.550', power:330, wfo:'Portland, OR', lat:45.5152, lon:-122.6784},
+  {city:'Pittsburgh', state:'PA', call:'KIH-35', freq:'162.550', power:1000, wfo:'Pittsburgh, PA', lat:40.4406, lon:-79.9959},
+  {city:'San Juan', state:'PR', call:'WXJ-68', freq:'162.400', power:1000, wfo:'San Juan, PR', lat:18.4655, lon:-66.1057},
+  {city:'Providence', state:'RI', call:'WXJ-39', freq:'162.400', power:500, wfo:'Boston, MA', lat:41.8240, lon:-71.4128},
+  {city:'Columbia', state:'SC', call:'WXJ-20', freq:'162.400', power:1000, wfo:'Columbia, SC', lat:34.0007, lon:-81.0348},
+  {city:'Charleston', state:'SC', call:'KHB-29', freq:'162.550', power:1000, wfo:'Charleston, SC', lat:32.7765, lon:-79.9311},
+  {city:'Sioux Falls', state:'SD', call:'WXM-28', freq:'162.400', power:1000, wfo:'Sioux Falls, SD', lat:43.5460, lon:-96.7313},
+  {city:'Nashville', state:'TN', call:'KIG-79', freq:'162.550', power:1000, wfo:'Nashville, TN', lat:36.1627, lon:-86.7816},
+  {city:'Memphis', state:'TN', call:'WXK-49', freq:'162.475', power:1000, wfo:'Memphis, TN', lat:35.1495, lon:-90.0490},
+  {city:'Dallas', state:'TX', call:'KEC-56', freq:'162.400', power:1000, wfo:'Fort Worth, TX', lat:32.7767, lon:-96.7970},
+  {city:'Fort Worth', state:'TX', call:'KEC-55', freq:'162.550', power:1000, wfo:'Fort Worth, TX', lat:32.7555, lon:-97.3308},
+  {city:'Houston', state:'TX', call:'KGG-68', freq:'162.400', power:330, wfo:'Houston, TX', lat:29.7604, lon:-95.3698},
+  {city:'San Antonio', state:'TX', call:'WXK-67', freq:'162.550', power:1000, wfo:'Austin, TX', lat:29.4241, lon:-98.4936},
+  {city:'Austin', state:'TX', call:'WXK-27', freq:'162.400', power:1000, wfo:'Austin, TX', lat:30.2672, lon:-97.7431},
+  {city:'Salt Lake City', state:'UT', call:'KEC-78', freq:'162.550', power:330, wfo:'Salt Lake City, UT', lat:40.7608, lon:-111.8910},
+  {city:'Burlington', state:'VT', call:'KIG-60', freq:'162.400', power:1000, wfo:'Burlington, VT', lat:44.4759, lon:-73.2121},
+  {city:'Richmond', state:'VA', call:'WXK-65', freq:'162.475', power:1000, wfo:'Wakefield, VA', lat:37.5407, lon:-77.4360},
+  {city:'Norfolk', state:'VA', call:'KHB-37', freq:'162.550', power:1000, wfo:'Wakefield, VA', lat:36.8508, lon:-76.2859},
+  {city:'Seattle', state:'WA', call:'KHB-60', freq:'162.550', power:330, wfo:'Seattle, WA', lat:47.6062, lon:-122.3321},
+  {city:'Charleston', state:'WV', call:'WXJ-84', freq:'162.400', power:1000, wfo:'Charleston, WV', lat:38.3498, lon:-81.6326},
+  {city:'Milwaukee', state:'WI', call:'KEC-60', freq:'162.400', power:1000, wfo:'Milwaukee, WI', lat:43.0389, lon:-87.9065},
+  {city:'Madison', state:'WI', call:'WXJ-87', freq:'162.550', power:1000, wfo:'Milwaukee, WI', lat:43.0731, lon:-89.4012},
+  {city:'Cheyenne/Laramie', state:'WY', call:'WXM-37', freq:'162.550', power:1000, wfo:'Cheyenne, WY', lat:41.1400, lon:-104.8202},
+  {city:'Nimitz Hill (Guam)', state:'GU', call:'WXM-85', freq:'162.400', power:375, wfo:'Tiyan, GU', lat:13.4443, lon:144.7937}
+];
+
+let activeChannels = new Set(Object.keys(CHANNELS));
+let searchTerm = '';
+let selectedIdx = null;
+
+const map = L.map('map', {zoomControl:true}).setView([39.5, -98.35], 4);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+map.getPane('tilePane').style.filter = 'brightness(0.7) saturate(0.7)';
+
+const MILES_TO_METERS = 1609.34;
+let markers = [];
+
+function milesRing(){ return 40 * MILES_TO_METERS; }
+
+function buildIcon(hex, selected){
+  const size = selected ? 16 : 11;
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${hex};border:2px solid #0e0c09;${selected?'box-shadow:0 0 8px '+hex+';':''}"></div>`,
+    iconSize:[size, size],
+    iconAnchor:[size/2, size/2]
+  });
+}
+
+STATIONS.forEach((st, idx) => {
+  const chInfo = CHANNELS[st.freq];
+  const circle = L.circle([st.lat, st.lon], {
+    radius: milesRing(), color: chInfo.hex, weight:1, fillColor: chInfo.hex, fillOpacity:0.06, opacity:0.35
+  }).addTo(map);
+  const marker = L.marker([st.lat, st.lon], { icon: buildIcon(chInfo.hex, false) }).addTo(map);
+  marker.bindPopup(
+    `<div class="popup-title">${st.city}, ${st.state}</div>`+
+    `<div class="popup-line">Callsign: ${st.call}</div>`+
+    `<div class="popup-line">Channel ${chInfo.ch} &middot; ${st.freq} MHz</div>`+
+    `<div class="popup-line">Power: ${st.power}W</div>`+
+    `<div class="popup-line">NWS Office: ${st.wfo}</div>`
+  );
+  marker.on('click', () => selectStation(idx));
+  markers.push({ marker, circle, idx });
+});
+
+function renderLegend(){
+  const el = document.getElementById('channel-legend');
+  el.innerHTML = '';
+  Object.entries(CHANNELS).forEach(([freq, info]) => {
+    const chip = document.createElement('div');
+    chip.className = 'ch-chip' + (activeChannels.has(freq) ? '' : ' off');
+    chip.innerHTML = `<span class="ch-dot" style="background:${info.hex}"></span>${info.ch} &middot; ${freq}`;
+    chip.addEventListener('click', () => {
+      if (activeChannels.has(freq)) activeChannels.delete(freq); else activeChannels.add(freq);
+      renderLegend();
+      applyFilters();
+    });
+    el.appendChild(chip);
+  });
+}
+renderLegend();
+
+function passesFilter(st){
+  if (!activeChannels.has(st.freq)) return false;
+  if (!searchTerm) return true;
+  const hay = `${st.city} ${st.state} ${st.call}`.toLowerCase();
+  return hay.includes(searchTerm);
+}
+
+function applyFilters(){
+  let count = 0;
+  markers.forEach(({marker, circle, idx}) => {
+    const st = STATIONS[idx];
+    const show = passesFilter(st);
+    const has = map.hasLayer(marker);
+    if (show && !has) { marker.addTo(map); circle.addTo(map); }
+    if (!show && has) { map.removeLayer(marker); map.removeLayer(circle); }
+    if (show) count++;
+  });
+  document.getElementById('station-count').innerHTML = `${count}<span>stations shown</span>`;
+  renderStationList();
+}
+
+function renderStationList(){
+  const list = document.getElementById('station-list');
+  list.innerHTML = '';
+  STATIONS.forEach((st, idx) => {
+    if (!passesFilter(st)) return;
+    const chInfo = CHANNELS[st.freq];
+    const row = document.createElement('div');
+    row.className = 'station-row' + (idx === selectedIdx ? ' selected' : '');
+    row.innerHTML = `
+      <span class="ch-marker" style="background:${chInfo.hex}"></span>
+      <div>
+        <div class="station-name">${st.city}, ${st.state}</div>
+        <div class="station-sub">${st.call} &middot; ${chInfo.ch} &middot; ${st.power}W</div>
+      </div>
+    `;
+    row.addEventListener('click', () => selectStation(idx));
+    list.appendChild(row);
+  });
+}
+
+function selectStation(idx){
+  selectedIdx = idx;
+  const st = STATIONS[idx];
+  markers.forEach(m => m.marker.setIcon(buildIcon(CHANNELS[STATIONS[m.idx].freq].hex, m.idx === idx)));
+  renderStationList();
+  map.flyTo([st.lat, st.lon], 7, {duration:0.6});
+  markers[idx].marker.openPopup();
+}
+
+document.getElementById('search-box').addEventListener('input', (e) => {
+  searchTerm = e.target.value.toLowerCase();
+  applyFilters();
+});
+
+applyFilters();
+</script>
+</body>
+</html>
